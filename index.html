@@ -1,4 +1,5 @@
 <!DOCTYPE html>
+
 <body itemscope itemtype="http://schema.org/ProfilePage">
 <head>
 	<title>Catherina Centanni</title>
@@ -12,13 +13,16 @@
 		
 	
     <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css" integrity="sha384-BVYiiSIFeK1dGmJRAkycuHAHRg32OmUcww7on3RYdg4Va+PmSTsz/K68vbdEjh4u" crossorigin="anonymous">
-	
-	<link href="//maxcdn.bootstrapcdn.com/font-awesome/4.2.0/css/font-awesome.min.css" rel="stylesheet">
+	<link href="https://maxcdn.bootstrapcdn.com/font-awesome/4.2.0/css/font-awesome.min.css" rel="stylesheet">
 
-	<link rel="stylesheet" href="css/main.css">
+	<link href="assets/css/main.css" rel="stylesheet">
+	
+	<script src="https://cdnjs.cloudflare.com/ajax/libs/less.js/2.7.2/less.min.js"></script>
 	
 	<style>
-
+	@media (min-width: 768px) { 
+		.container{max-width:600px;}
+	}	
 	/* Landscape phones and down */
 	@media (max-width: 480px) { 
 		h1 { font-size: 21pt;}
@@ -34,45 +38,28 @@
 	  
     <div class="container text-center" itemtype="http://schema.org/Person" itemscope>
 		
-	  <div class="navbar navbar-inverse navbar-top">
-	  	<ul>
-			<ul class="nav navbar-nav">
-			   <li class="active"><a href="index.html">About<span class="sr-only">(current)</span></a></li>
-			   <li><a href="projects.html">Projects<span class="sr-only">(current)</span></a></li>
-			</ul>
-	  </div>
-	
-	  <div class="row">
-	  	<img src="img/catherina-sm.jpg" width="140px" class="img-circle">
-	  </div>
+	  <img src="assets/img/catherina-sm.jpg" width="140px" class="img-circle">
 	
       <h1 itemprop="name">CATHERINA CENTANNI</h1>
-	  <hr>
-	
-	  	<div class="row about" itemprop="about">
 			
-		 <div class="col-xs-8 col-xs-offset-2">Living the consequence of years of deliberate best guesses in response to random events. Interested in systems, consciousness, reality, art, science, technology, aviation, outdoorsiness. Aspiring nomad. Wabi-sabi. I occasionally dabble in <a href="projects.html">art</a>. More <a href="http://about.me/catherina.centanni">about.me</a></div>
-		</div>
-		
+	
+		<ul class="social-network social-circle">
+            <li><a href="https://twitter.com/microsaurus" class="icoTwitter" title="Twitter"><i class="fa fa-twitter"></i></a></li>
+            <li><a href="https://www.linkedin.com/in/catherina" class="icoLinkedin" title="Linkedin"><i class="fa fa-linkedin"></i></a></li>
+<li><a href="https://www.instagram.com/catorama42/" class="icoInstagram" title="Instagram"><i class="fa fa-instagram"></i></a></li>
+<li><a href="https://www.flickr.com/photos/catorama" class="icoFlickr" title="Flickr"><i class="fa fa-flickr"></i></a></li>
+        </ul>
+	
+	
+		 <p>Living the consequence of years of deliberate best guesses in response to random events. Interested in systems, consciousness, reality, art, science, technology, aviation, outdoorsiness. Aspiring nomad. Wabi-sabi. I occasionally dabble in <a href="projects.html">art</a>. More <a href="http://about.me/catherina.centanni">about.me</a>
+		</p>
 
-		
-		<div class="row">
-			<div class="col-xs-12">
-                <ul class="social-network social-circle">
-                    <li><a href="https://twitter.com/microsaurus" class="icoTwitter" title="Twitter"><i class="fa fa-twitter"></i></a></li>
-                    <li><a href="https://www.linkedin.com/in/catherina" class="icoLinkedin" title="Linkedin"><i class="fa fa-linkedin"></i></a></li>
-		<li><a href="https://www.instagram.com/catorama42/" class="icoInstagram" title="Instagram"><i class="fa fa-instagram"></i></a></li>
-		<li><a href="https://www.flickr.com/photos/catorama" class="icoFlickr" title="Flickr"><i class="fa fa-flickr"></i></a></li>
-                </ul>				
-			</div>
-		</div>
-		
-		<h2>current obsessions</h2>
-		
-		<div class="row">
-			<div class="col-xs-6 col-xs-offset-3">
-		<div class="bootstrap-tagsinput">
+	   <h2><a href="projects.html">projects</a></h2>
+	   
+	   <div class="bootstrap-tagsinput">		
+			<h2>current obsessions</h2>
 			<span class="tag label label-default">ai</span> 
+			<span class="tag label label-default">vr/ar</span> 
 			<span class="tag label label-default">sustainability</span> 
 			<span class="tag label label-default">future humans</span> 
 			<span class="tag label label-default">evolutionary mismatch</span> 
@@ -86,9 +73,6 @@
 			<span class="tag label label-default">consciousness</span> 
 			<span class="tag label label-default">poorly timed automatic sliding doors</span> 
 		</div>
-		</div>
-		</div>
-		
 		
     </div> <!-- /container -->
  
