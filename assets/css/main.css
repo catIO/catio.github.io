@@ -1,5 +1,5 @@
 body {margin-top:10px;}
-
+body { font-family: 'Roboto', sans-serif; }
 
 /*=========================
   Icons
@@ -17,6 +17,9 @@ ul.social-network li {
 	margin: 0 5px;
 }
 
+.label a {color:#fff;}
+
+.label:hover a {background:yellow;}
 
 /* footer social icons */
 
@@ -35,7 +38,10 @@ ul.social-network li {
 .social-network a.icoLinkedin:hover {
 	background-color:#007bb7;
 }
-.social-network a.icoFlickr:hover i, .social-network a.icoFacebook:hover i, .social-network a.icoTwitter:hover i, .social-network a.icoInstagram:hover i, .social-network a.icoLinkedin:hover i {
+.social-network a.icoMeetup:hover {
+	background-color:#007bb7;
+}
+.social-network a.icoFlickr:hover i, .social-network a.icoFacebook:hover i, .social-network a.icoTwitter:hover i, .social-network a.icoInstagram:hover i, .social-network a.icoLinkedin:hover i, .social-network a.icoMeetup:hover i {
 	color:#fff;
 }
 
