@@ -1,7 +1,7 @@
 body {margin-top:10px;}
-body { font-family: Merriweather,serif; }
-p {font-size:18px;}
-.tag  {background: slategrey;}
+body { font-family: 'Roboto', sans-serif; }
+.tag  {background: #767676; line-height: 2; }
+.label {font-size: 110%; font-weight: 400;}
 
 /*=========================
   Icons
@@ -21,7 +21,7 @@ ul.social-network li {
 
 .label a {color:#fff;}
 
-.label:hover a {background:yellow;}
+.label:hover a {color:yellow;}
 
 /* footer social icons */
 
