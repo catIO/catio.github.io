@@ -1,5 +1,6 @@
 body {margin-top:10px;}
-body { font-family: 'Roboto', sans-serif; }
+body { font-family: Merriweather,serif; }
+p {font-size:18px;}
 .tag  {background: slategrey;}
 
 /*=========================
