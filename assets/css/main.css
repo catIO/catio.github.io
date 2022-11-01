@@ -1,7 +1,9 @@
-body {margin-top:10px;}
-body { font-family: 'Roboto', sans-serif; }
+body {margin-top:10px; background-color: black;}
+body { font-family: 'Roboto', sans-serif;  color: #ccc;}
 .tag  {background: #767676; line-height: 2; }
 .label {font-size: 110%; font-weight: 400;}
+.thumbnail a {background-color: #fff; }
+ 
 
 /*=========================
   Icons
@@ -66,7 +68,7 @@ ul.social-network li {
 }
 
 .social-circle i {
-	color: #fff;
+	color: #333;
 }
 
 .social-circle a {
