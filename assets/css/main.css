@@ -3,6 +3,7 @@ body { font-family: 'Roboto', sans-serif;  color: #ccc;}
 .tag  {background: #767676; line-height: 2; }
 .label {font-size: 110%; font-weight: 400;}
 .thumbnail a {background-color: #fff; }
+.intro {font-size: larger;}
  
 
 /*=========================
