@@ -4,6 +4,7 @@ body { font-family: 'Roboto', sans-serif;  color: #ccc;}
 .label {font-size: 110%; font-weight: 400;}
 .thumbnail a {background-color: #fff; }
 .intro {font-size: larger;}
+ figure img {  margin-bottom: 50px; }
  
 
 /*=========================
@@ -22,7 +23,8 @@ ul.social-network li {
 	margin: 0 5px;
 }
 
-.label a {color:#fff;}
+.label a {color:#fff;}	
+
 
 .label:hover a {color:yellow;}
 
