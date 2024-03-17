@@ -15,7 +15,7 @@ body {
 }
 
 .img-circle{
-    clip-path: circle(40px at center);
+    clip-path: circle(50px at center);
 }
 
 .gallery-container {
