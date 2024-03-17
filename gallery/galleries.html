@@ -40,38 +40,52 @@
   </style>
 </head>
 <body>
-
   <div class="gallery" id="gallery"></div>
 
   <script>
+    
     // Replace these values with your Contentful space ID and access token
     const spaceId = 'lo3m691vqqd4';
     const accessToken = 'YMPcoA0Omm11ib0fCsw219bCLX9IWbhnUk_ZiCbNO9w';
 
-   
-    // Fetch images from Contentful
-    fetch(`https://cdn.contentful.com/spaces/${spaceId}/environments/master/entries?content_type=image&access_token=${accessToken}`)
-      .then(response => response.json())
-      .then(data => {
-        const galleryElement = document.getElementById('gallery');
 
-        // Iterate over retrieved entries
-        data.includes.Asset.forEach(asset => {
-      // Get the URL and alt text of the image
+fetch(`https://cdn.contentful.com/spaces/${spaceId}/environments/master/entries?content_type=galleries&access_token=${accessToken}`)
+  .then(response => response.json()) 
+  .then(data => {
+
+    console.log(`https://cdn.contentful.com/spaces/${spaceId}/environments/master/entries?content_type=galleries&access_token=${accessToken}`)
+    const galleryElement = document.getElementById('gallery');
+    console.log(data.items);
+
+// Iterate over retrieved assets
+data.includes.Asset.forEach(asset => {
+
+      console.log(asset);
+
       const imageUrl = asset.fields.file.url;
+      
+      const galleryURL = `/gallery?id=`; 
+      //const galleryURL = `/gallery?id=${galleryID}`; 
+      
       const imageAlt = asset.fields.title || 'Image';
 
           // Create image element and append to gallery
+          const anchorElement = document.createElement('a');
+          anchorElement.href = galleryURL;
           const imgElement = document.createElement('img');
           imgElement.src = `https:${imageUrl}`;
           imgElement.alt = imageAlt;
           imgElement.classList.add('image');
-          galleryElement.appendChild(imgElement);
+          anchorElement.appendChild(imgElement);
+          galleryElement.appendChild(anchorElement);
         });
       })
       .catch(error => {
         console.error('Error fetching images:', error);
       });
-  </script>
+
+</script>
+
+  
 </body>
 </html>
