@@ -9,8 +9,9 @@
 </head>
 <body>
 
-  <div class="header"><a href="/"><img src="../assets/img/catherina-sm.jpg" width="140px" class="img-circle" /></a></div>
+  <div class="header" id="header"><a href="/"><img src="../assets/img/catherina-sm.jpg" width="140px" class="img-circle" /></a></div>
 
+  
   <div class="gallery" id="gallery"></div>
     
   <script>
@@ -24,16 +25,19 @@
         const galleryID = urlParams.get('id') ? urlParams.get('id') : "1xyFDFmKstsEcbg6Ytcti4";
 
         const galleryElement = document.getElementById('gallery');
+        const headerElement = document.getElementById('header');
 
 
         client.getEntry(galleryID).then(function (entry) {
 
-            console.log(entry.fields)
+          const titleElement = document.createElement('h1');
+          titleElement.textContent = entry.fields.title;
+          headerElement.appendChild(titleElement);
+
+            //console.log(entry.fields)
 
             entry.fields.images.forEach(function (image) {
                 //console.log(field.sys.id);
-                console.log(image.fields.title);
-                console.log(image.fields.file.url);
 
                 imageUrl = image.fields.file.url;
                 imageAlt = image.fields.title || 'Image';
