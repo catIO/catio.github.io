@@ -1,5 +1,7 @@
 body {
     margin: 20px;
+    background-color: black;
+    color: white;
     padding: 0;
     justify-content: center;
     align-items: center;
@@ -7,17 +9,25 @@ body {
     font-family:'Trebuchet MS', 'Lucida Sans Unicode', 'Lucida Grande', 'Lucida Sans', Arial, sans-serif
 }
 
+.header{
+    text-align: center;
+    width: 100%;
+}
+
+.img-circle{
+    clip-path: circle(40px at center);
+}
+
 .gallery-container {
     max-width: 1200px; /* Adjust as needed */
     width: 100%;
-    
     padding: 0 20px;
 }
 
 .gallery {
     justify-content: center;
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(300px, 500px));
+    grid-template-columns: repeat(auto-fit, minmax(300px, 600px));
    
     gap: 10px; /* Set the gap between images */
 }
