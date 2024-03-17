@@ -28,15 +28,10 @@
         client.getEntry('3p5qS0PlMwoCrHGgqinjfR').then(function (entry) {
 
           
-
             entry.fields.gallery.forEach(function (field) {
 
               const container = document.createElement('div');
               galleryElement.appendChild(container);
-
-
-                console.log(field);
-                console.log(field.fields.promoImage.fields.file.url);
 
                 imageUrl = field.fields.promoImage.fields.file.url;
                 imageAlt = field.fields.promoImage.fields.title || 'Image';
