@@ -10,8 +10,12 @@ body {
     font-family:'Trebuchet MS', 'Lucida Sans Unicode', 'Lucida Grande', 'Lucida Sans', Arial, sans-serif
 }
 
-a:link {
+a:link, a:visited {
     color: white;
+    text-decoration: none;
+}
+a:hover {
+    color:darkgray;
     text-decoration: none;
 }
 

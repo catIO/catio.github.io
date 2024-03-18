@@ -18,13 +18,13 @@ ul.social-network {
 	margin-left:0 !important;
 	padding: 0;
 }
+
 ul.social-network li {
 	display: inline;
 	margin: 0 5px;
 }
 
 .label a {color:#fff;}	
-
 
 .label:hover a {color:yellow;}
 
