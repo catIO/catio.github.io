@@ -52,3 +52,16 @@ a:hover {
     }
 }
 
+.gallery div {
+position: relative;
+}
+  
+.gallery div p {
+position: absolute;
+top: 90%;
+left: 10%;
+transform: translate(-50%, -50%);
+background-color: rgba(116, 113, 113, 0.44); /* semi-transparent white background */
+border-radius: 3px;
+padding: 10px;
+}
