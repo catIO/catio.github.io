@@ -26,7 +26,10 @@ ul.social-network li {
 
 .label a {color:#fff;}	
 
-.label:hover a {color:yellow;}
+.label:hover a {
+	color:yellow;
+	text-decoration: none;
+}
 
 /* footer social icons */
 
