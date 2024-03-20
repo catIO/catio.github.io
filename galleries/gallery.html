@@ -68,6 +68,9 @@
           document.getElementById('myModal').style.display = "block";
           document.getElementById('modalImage').src = imgElement.src;
           slideIndex = index; // Set current slide index
+          modalImage.addEventListener('click', function() {
+            plusSlides(1);
+          });
         });
 
         galleryElement.appendChild(imgElement);
@@ -87,10 +90,16 @@
 
     function showSlides() {
       const modalImage = document.getElementById('modalImage');
+
       if (images.length > 0) {
-        console.log(images[slideIndex].fields.file.url);
-        modalImage.src = `https:${images[slideIndex].fields.file.url}`;
+        //console.log(images[slideIndex].fields.file.url);
+        modalImage.src = `https:${images[slideIndex].fields.file.url}`
       }
+
+      console.log(slideIndex);
+
+      
+      
     }
 
     function closeModal() {

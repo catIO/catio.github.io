@@ -53,6 +53,7 @@ a:hover {
 
 .image {
     width: calc(100%); /* 50% width for 2 items in a row with gap of 10px */
+    cursor: pointer;
 }
 
 @media screen and (max-width: 768px) {
@@ -62,7 +63,7 @@ a:hover {
 }
 
 .gallery div {
-position: relative;
+    position: relative;
 }
   
 .gallery div p {
@@ -94,13 +95,14 @@ padding: 10px;
   transform: translate(-50%, -50%);
   max-width: 80%;
   max-height: 80%;
+  cursor: pointer;
 }
 
     .close {
     color: #fff;
     position: absolute;
     top: 20px;
-    right: 20%;
+    right: 20px;
     font-size: 40px;
     font-weight: bold;
     transition: 0.3s;
@@ -121,8 +123,8 @@ padding: 10px;
     user-select: none;
     }
     .prev {
-    left: 20%;
+    left: 20px;
     }
     .next {
-    right: 20%;
+    right: 20px;
     }

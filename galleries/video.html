@@ -5,12 +5,12 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Contentful Image Gallery</title>
   <script src="https://cdn.jsdelivr.net/npm/contentful@latest/dist/contentful.browser.min.js"></script>
-  <link rel="stylesheet" href="galleries/main.css">
-  <link rel="icon" href="assets/img/favicon.ico" type="image/x-icon" sizes="16x16">
+  <link rel="stylesheet" href="main.css">
+  <link rel="icon" href="../assets/img/favicon.ico" type="image/x-icon" sizes="16x16">
 </head>
 <body>
 
-  <div class="header" id="header"><a href="/"><img src="assets/img/catherina-sm-bw.png" width="140px" class="img-circle" /></a></div>
+  <div class="header" id="header"><a href="/"><img src="../assets/img/catherina-sm-bw.png" width="140px" class="img-circle" /></a></div>
  
   <div class="video-gallery" id="video-gallery"></div>
     
@@ -21,6 +21,7 @@
           accessToken: 'YMPcoA0Omm11ib0fCsw219bCLX9IWbhnUk_ZiCbNO9w',
     });
 
+    
 
         //const urlParams = new URLSearchParams(window.location.search);
         //const galleryID = urlParams.get('id') ? urlParams.get('id') : "22EsG48hNX2s6JfDGqmVQV";
@@ -28,25 +29,25 @@
         const galleryElement = document.getElementById('video-gallery');
         const headerElement = document.getElementById('header');
 
+        const urlParams = new URLSearchParams(window.location.search);
 
         client.getEntries({
             content_type: 'video',
-            'metadata.tags.sys.id[all]': 'music'
+            'metadata.tags.sys.id[all]': urlParams.get('tag')
         })
         
         .then((entries) => {
             // Process retrieved entries
-            console.log(entries.items);
+            //console.log(entries.items);
 
             entries.items.forEach(function (item) {  
-                console.log(item);
+                //console.log(item);
                 const videoUrl = item.fields.url;
                  //Render the video on the page
-                console.log(item.fields.url);
+                //console.log(item.fields.url);
                 renderYouTubeEmbed(videoUrl);
             });
         })
-
         .catch(console.error);
 
 
