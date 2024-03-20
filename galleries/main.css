@@ -33,12 +33,25 @@ a:hover {
     padding: 0 20px;
 }
 
+.container {
+    width: 100%;
+    padding: 0 20px;
+    text-align: center;
+}
+
+#post-container p {
+    text-align: left;
+    padding: 0 20px;
+    width: 1024px;
+}
+
 .gallery {
     justify-content: center;
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(300px, 600px));
     gap: 10px; /* Set the gap between images */
 }
+
 .video-gallery {
     justify-content: center;
     display: grid;

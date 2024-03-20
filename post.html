@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Contentful Image Gallery</title>
+  <script src="https://cdn.jsdelivr.net/npm/contentful@latest/dist/contentful.browser.min.js"></script>
+  <link rel="stylesheet" href="assets/css/main.css">
+  <link rel="stylesheet" href="assets/css/post.css">
+  <link rel="icon" href="assets/img/favicon.ico" type="image/x-icon" sizes="16x16">
+
+
+</head>
+<body>
+
+
+  <div class="header"><a href="/"><img src="assets/img/catherina-sm-bw.png" width="140px" class="img-circle" /></a></div>
+
+
+  <div id="post-container" class="post-container"></div>
+
+  
+  <script>
+    // Replace these values with your actual Contentful space ID and access token
+
+    const client = contentful.createClient({
+          space: 'lo3m691vqqd4',
+          accessToken: 'YMPcoA0Omm11ib0fCsw219bCLX9IWbhnUk_ZiCbNO9w',
+    });
+
+    // Function to fetch and render posts
+    async function fetchPosts() {
+      try {
+        const response = await client.getEntries({
+          content_type: 'post'
+        });
+        return response.items;
+      } catch (error) {
+        console.error('Error fetching entries:', error);
+        return [];
+      }
+    }
+
+ // Function to render posts on the page
+ async function renderPosts(posts) {
+      const postContainer = document.getElementById('post-container');
+      for (const post of posts) {
+        const title = post.fields.title;
+        const paragraphsDocument = post.fields.content;
+        const coverImageId = post.fields.coverImage.sys.id;
+
+        
+
+        const postElement = document.createElement('div');
+        postElement.innerHTML = `<h2>${title}</h2>`;
+
+        // Render cover image
+        if (coverImageId) {
+            
+
+          const coverImage = await fetchAsset(coverImageId);
+          console.log(coverImage)
+
+          const coverImageElement = document.createElement('img');
+          coverImageElement.src = 'https:' + coverImage.file.url;
+          coverImageElement.alt = coverImage.title;
+          postElement.appendChild(coverImageElement);
+        }
+
+        // Render paragraphs
+        const paragraphs = paragraphsDocument.content;
+        paragraphs.forEach(paragraph => {
+          const paragraphElement = document.createElement('p');
+          paragraphElement.textContent = paragraph.content[0].value;
+          postElement.appendChild(paragraphElement);
+        });
+
+        postContainer.appendChild(postElement);
+      }
+    }
+
+
+    // Function to fetch asset by ID
+    async function fetchAsset(assetId) {
+      try {
+        const response = await client.getAsset(assetId);
+        return response.fields;
+
+      } catch (error) {
+        console.error('Error fetching asset:', error);
+        return null;
+      }
+    }
+
+
+    // Fetch posts and render them when the page loads
+    window.onload = async function() {
+      const posts = await fetchPosts();
+      renderPosts(posts);
+    };
+  </script>
+
+
+</body>
+</html>
