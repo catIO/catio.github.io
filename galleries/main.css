@@ -75,6 +75,8 @@ background-color: rgba(116, 113, 113, 0.44); /* semi-transparent white backgroun
 border-radius: 3px;
 padding: 10px;
 }
+
+
 /* Add modal CSS */
 .modal {
   display: none;
@@ -107,13 +109,13 @@ padding: 10px;
     font-weight: bold;
     transition: 0.3s;
 }
-    .close:hover,
-    .close:focus {
+.close:hover,
+.close:focus {
     color: #bbb;
     text-decoration: none;
     cursor: pointer;
-    }
-    .modal-btn {
+}
+.modal-btn {
     position: absolute;
     top: 50%;
     transform: translateY(-50%);
@@ -121,10 +123,14 @@ padding: 10px;
     cursor: pointer;
     color: #fff;
     user-select: none;
-    }
-    .prev {
+}
+.prev {
     left: 20px;
-    }
-    .next {
+}
+.next {
     right: 20px;
-    }
+}
+
+.fa-arrow-left {
+    padding-right: 5px;
+}
