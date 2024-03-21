@@ -60,14 +60,26 @@
         // Render paragraphs
         const paragraphs = paragraphsDocument.content;
         paragraphs.forEach(paragraph => {
-          const paragraphElement = document.createElement('p');
-          paragraphElement.textContent = paragraph.content[0].value;
-          postElement.appendChild(paragraphElement);
+        const paragraphElement = document.createElement('p');
+        
+        paragraph.content.forEach(contentNode => {
+          if (contentNode.nodeType === 'text') {
+            // Handle text nodes
+            paragraphElement.innerHTML += contentNode.value;
+          } else if (contentNode.nodeType === 'hyperlink') {
+            // Handle hyperlink nodes
+            const linkElement = document.createElement('a');
+            linkElement.href = contentNode.data.uri;
+            linkElement.textContent = contentNode.content[0].value;
+            paragraphElement.appendChild(linkElement);
+          }
         });
+        postElement.appendChild(paragraphElement);
+      });
 
         postContainer.appendChild(postElement);
-
     }
+
     // Function to fetch asset by ID
     async function fetchAsset(assetId) {
       try {
