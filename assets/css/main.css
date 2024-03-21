@@ -5,6 +5,25 @@ body { font-family: 'Roboto', sans-serif;  color: #ccc;}
 .thumbnail a {background-color: #fff; }
 .intro {font-size: larger;}
  figure img {  margin-bottom: 50px; }
+
+ .header{
+    text-align: center;
+    width: 100%;
+}
+
+.img-circle{
+    clip-path: circle(50px at center);
+}
+
+a:link, a:visited {
+	color: white;
+	text-decoration: none;
+  }
+  a:hover {
+	color:darkgray;
+	text-decoration: none;
+  }
+
  
 
 /*=========================
