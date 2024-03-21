@@ -67,3 +67,13 @@ body {
        padding: 10px;
    }
 }
+
+.post-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 20px;
+  }
+  .post-thumbnail img {
+    max-width: 90%;
+    height: auto;
+}
