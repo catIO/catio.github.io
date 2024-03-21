@@ -17,7 +17,7 @@
   <div id="post-container" class="post-container post-grid"></div>
   
   <script>
-    // Replace these values with your actual Contentful space ID and access token
+
     const client = contentful.createClient({
         space: 'lo3m691vqqd4',
         accessToken: 'YMPcoA0Omm11ib0fCsw219bCLX9IWbhnUk_ZiCbNO9w',
@@ -42,6 +42,9 @@
           const postId = post.sys.id;
           const title = post.fields.title;
           const coverImageId = post.fields.coverImage.sys.id;
+          console.log(post.fields.coverImage)
+          console.log(post.fields.coverImage.sys)
+          console.log(post.fields.coverImage.sys.id)
           const postLink = `post.html?id=${postId}`;
 
           const postThumbnail = document.createElement('div');
