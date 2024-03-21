@@ -29,6 +29,7 @@
             return response;
         } catch (error) {
             console.error('Error fetching post:', error);
+            
             return null;
         }
     }
@@ -36,7 +37,6 @@
  // Function to render posts on the page
  async function renderPosts(post) {
 
-        console.log(post)
         const postContainer = document.getElementById('post-container');
         const title = post.fields.title;
         const paragraphsDocument = post.fields.content;
@@ -98,8 +98,13 @@
         const urlParams = new URLSearchParams(window.location.search);
         const postId = urlParams.get('id')
 
-      const posts = await fetchPostById(postId);
-      renderPosts(posts);
+      if (postId){
+        const posts = await fetchPostById(postId);
+        renderPosts(posts);
+       }else{
+        window.location.href = "/posts.html";
+      }
+    
     };
   </script>
 

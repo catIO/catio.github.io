@@ -42,9 +42,7 @@
           const postId = post.sys.id;
           const title = post.fields.title;
           const coverImageId = post.fields.coverImage.sys.id;
-          console.log(post.fields.coverImage)
-          console.log(post.fields.coverImage.sys)
-          console.log(post.fields.coverImage.sys.id)
+
           const postLink = `post.html?id=${postId}`;
 
           const postThumbnail = document.createElement('div');
@@ -73,12 +71,16 @@
     // Fetch posts and render them when the page loads
     window.onload = async function() {
       try {
-        const response = await client.getEntries();
+        const response = await client.getEntries({
+            content_type: 'post',
+           //'metadata.tags.sys.id[all]': urlParams.get('tag')
+        })
         renderPosts(response.items);
       } catch (error) {
         console.error('Error fetching posts:', error);
       }
     };
+        
   </script>
 
 </body>
