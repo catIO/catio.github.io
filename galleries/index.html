@@ -12,10 +12,8 @@
 <body>
 
   <div class="header"><a href="/"><img src="../assets/img/catherina-sm-bw.png" width="140px" class="img-circle" /></a></div>
-  
   <div class="gallery" id="gallery"></div>
 
-    
   <script>
   
         var client = contentful.createClient({
@@ -24,7 +22,6 @@
         });
 
         const galleryElement = document.getElementById('gallery');
-
 
         client.getEntry('3p5qS0PlMwoCrHGgqinjfR').then(function (entry) {
 
@@ -56,7 +53,6 @@
                 container.appendChild(captionElement);
 
                 galleryElement.appendChild(container);
-
 
             });
 
