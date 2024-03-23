@@ -11,14 +11,14 @@
 
     <!-- Define JavaScript variables to hold environment variables -->
     <script>
-      //const ACCESS_TOKEN = process.env.CDA_TOKEN;
-      const ACCESS_TOKEN = process.env.CDA_ACCESS_TOKEN;
-      //console.log(ACCESS_TOKEN);
-      console.log(ACCESS_TOKEN);
+      import secrets from './config.js';
+
+      const apiKey = secrets.apiKey;
+      console.log(apiKey);
     </script>
 </head>
 <body>
-  
+  1
   
   <div class="header"><a href="/"><img src="assets/img/catherina-sm-bw.png" width="140px" class="img-circle" /></a></div>
 
@@ -31,7 +31,7 @@
     const client = contentful.createClient({
         space: 'lo3m691vqqd4',
         //accessToken: 'YMPcoA0Omm11ib0fCsw219bCLX9IWbhnUk_ZiCbNO9w',
-        accessToken: ACCESS_TOKEN,
+        accessToken: apiKey,
     });
     
     // Function to fetch and render posts
