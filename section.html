@@ -50,14 +50,12 @@
         
         posts.forEach(post => {
 
-          console.log(post);
+          //console.log(post);
 
           const postId = post.sys.id;
           const title = post.fields.title;
           const coverImageId = post.fields.coverImage.sys.id;
-
           const postLink = `post.html?id=${postId}`;
-
           const postThumbnail = document.createElement('div');
           postThumbnail.classList.add('post-thumbnail');
 

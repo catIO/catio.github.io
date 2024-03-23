@@ -9,18 +9,28 @@
   <link rel="stylesheet" href="assets/css/post.css">
   <link rel="icon" href="assets/img/favicon.ico" type="image/x-icon" sizes="16x16">
 
+    <!-- Define JavaScript variables to hold environment variables -->
+    <script>
+      const ACCESS_TOKEN = process.env.CDA_ACCESS_TOKEN;
+    </script>
+
+
 </head>
 <body>
-
+  
+  
   <div class="header"><a href="/"><img src="assets/img/catherina-sm-bw.png" width="140px" class="img-circle" /></a></div>
 
   <div id="post-container" class="post-container post-grid"></div>
   
   <script>
 
+
+
     const client = contentful.createClient({
         space: 'lo3m691vqqd4',
-        accessToken: 'YMPcoA0Omm11ib0fCsw219bCLX9IWbhnUk_ZiCbNO9w',
+        //accessToken: 'YMPcoA0Omm11ib0fCsw219bCLX9IWbhnUk_ZiCbNO9w',
+        accessToken: ACCESS_TOKEN,
     });
     
     // Function to fetch and render posts
