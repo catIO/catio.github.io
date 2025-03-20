@@ -8,7 +8,11 @@ import { fileURLToPath } from "url";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
+// Get the repository name from package.json or use a default
+const base = process.env.NODE_ENV === 'production' ? '/practice-timer/' : '/';
+
 export default defineConfig({
+  base,
   plugins: [
     react(),
     runtimeErrorOverlay(),

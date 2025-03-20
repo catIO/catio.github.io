@@ -42,36 +42,61 @@ var MemStorage = class {
   }
   // Settings methods
   async getSettingsByUserId(userId) {
-    const userSettings = Array.from(this.userSettings.values()).find(
-      (settings2) => settings2.userId === userId
-    );
-    return userSettings;
+    console.log("Storage - Getting settings for user:", userId);
+    const settings = this.userSettings.get(userId);
+    console.log("Storage - Found settings:", settings);
+    if (!settings) return null;
+    return {
+      ...settings,
+      darkMode: settings.darkMode ?? false
+    };
   }
   async createSettings(insertSettings) {
     const id = this.settingsIdCounter++;
-    const settings2 = {
+    const settings = {
       ...insertSettings,
       id,
+      userId: insertSettings.userId ?? 1,
+      // Default to user 1 if not provided
       soundEnabled: insertSettings.soundEnabled ?? true,
       vibrationEnabled: insertSettings.vibrationEnabled ?? true,
       workDuration: insertSettings.workDuration ?? 25,
       breakDuration: insertSettings.breakDuration ?? 5,
-      iterations: insertSettings.iterations ?? 4
+      iterations: insertSettings.iterations ?? 4,
+      darkMode: insertSettings.darkMode ?? false
     };
-    this.userSettings.set(id, settings2);
-    return settings2;
+    console.log("Storage - Creating new settings:", settings);
+    this.userSettings.set(settings.userId ?? 1, settings);
+    return settings;
   }
-  async updateSettings(userId, updatedSettings) {
-    const existingSettings = await this.getSettingsByUserId(userId);
+  async updateSettings(userId, settings) {
+    console.log("Storage - Updating settings for user:", userId);
+    console.log("Storage - Existing settings:", this.userSettings.get(userId));
+    console.log("Storage - New settings to apply:", settings);
+    const existingSettings = this.userSettings.get(userId);
     if (!existingSettings) {
-      throw new Error("Settings not found");
+      console.log("Storage - No existing settings found, creating new settings");
+      return this.createSettings({ ...settings, userId });
     }
-    const settings2 = {
+    const updatedSettings = {
       ...existingSettings,
-      ...updatedSettings
+      ...settings,
+      userId,
+      // Ensure userId is set correctly
+      // Ensure all fields are properly merged
+      soundEnabled: settings.soundEnabled ?? existingSettings.soundEnabled,
+      vibrationEnabled: settings.vibrationEnabled ?? existingSettings.vibrationEnabled,
+      workDuration: settings.workDuration ?? existingSettings.workDuration,
+      breakDuration: settings.breakDuration ?? existingSettings.breakDuration,
+      iterations: settings.iterations ?? existingSettings.iterations,
+      darkMode: settings.darkMode ?? existingSettings.darkMode ?? false
     };
-    this.userSettings.set(existingSettings.id, settings2);
-    return settings2;
+    console.log("Storage - Final merged settings:", updatedSettings);
+    this.userSettings.set(userId, updatedSettings);
+    const savedSettings = this.userSettings.get(userId);
+    console.log("Storage - Verified saved settings:", savedSettings);
+    console.log("Storage - Settings match:", JSON.stringify(savedSettings) === JSON.stringify(updatedSettings));
+    return updatedSettings;
   }
   // Session methods
   async getSessionsByUserId(userId) {
@@ -94,52 +119,25 @@ var MemStorage = class {
 var storage = new MemStorage();
 
 // shared/schema.ts
-import { pgTable, text, serial, integer, boolean, timestamp } from "drizzle-orm/pg-core";
-import { createInsertSchema } from "drizzle-zod";
-var users = pgTable("users", {
-  id: serial("id").primaryKey(),
-  username: text("username").notNull().unique(),
-  password: text("password").notNull()
+import { z } from "zod";
+var insertSettingsSchema = z.object({
+  userId: z.number(),
+  soundEnabled: z.boolean().default(true),
+  vibrationEnabled: z.boolean().default(true),
+  workDuration: z.number().default(25),
+  breakDuration: z.number().default(5),
+  iterations: z.number().default(4),
+  darkMode: z.boolean().default(false)
 });
-var insertUserSchema = createInsertSchema(users).pick({
-  username: true,
-  password: true
-});
-var settings = pgTable("settings", {
-  id: serial("id").primaryKey(),
-  userId: integer("user_id").references(() => users.id),
-  soundEnabled: boolean("sound_enabled").notNull().default(true),
-  vibrationEnabled: boolean("vibration_enabled").notNull().default(true),
-  workDuration: integer("work_duration").notNull().default(25),
-  breakDuration: integer("break_duration").notNull().default(5),
-  iterations: integer("iterations").notNull().default(4)
-});
-var insertSettingsSchema = createInsertSchema(settings).pick({
-  userId: true,
-  soundEnabled: true,
-  vibrationEnabled: true,
-  workDuration: true,
-  breakDuration: true,
-  iterations: true
-});
-var sessions = pgTable("sessions", {
-  id: serial("id").primaryKey(),
-  userId: integer("user_id").references(() => users.id),
-  type: text("type").notNull(),
-  startTime: timestamp("start_time").notNull(),
-  endTime: timestamp("end_time").notNull(),
-  duration: integer("duration").notNull()
-});
-var insertSessionSchema = createInsertSchema(sessions).pick({
-  userId: true,
-  type: true,
-  startTime: true,
-  endTime: true,
-  duration: true
+var insertSessionSchema = z.object({
+  userId: z.number(),
+  type: z.enum(["work", "break"]),
+  startTime: z.date(),
+  endTime: z.date()
 });
 
 // server/routes.ts
-import { z } from "zod";
+import { z as z2 } from "zod";
 import { ZodError } from "zod";
 import { fromZodError } from "zod-validation-error";
 async function registerRoutes(app2) {
@@ -159,40 +157,91 @@ async function registerRoutes(app2) {
           vibrationEnabled: true,
           workDuration: 25,
           breakDuration: 5,
-          iterations: 4
+          iterations: 4,
+          darkMode: false
         });
       }
-      res.json(userSettings);
+      const responseSettings = {
+        ...userSettings,
+        darkMode: userSettings.darkMode ?? false
+      };
+      console.log("GET /settings - Returning settings:", responseSettings);
+      res.json(responseSettings);
     } catch (error) {
+      console.error("GET /settings - Error:", error);
       res.status(500).json({ message: "Failed to get settings" });
     }
   });
   router.post("/settings", async (req, res) => {
     try {
+      console.log("POST /settings - Received request body:", req.body);
       const userId = res.locals.userId;
-      const settingsData = insertSettingsSchema.omit({ userId: true }).parse({ ...req.body, userId });
+      console.log("POST /settings - User ID:", userId);
+      const { userId: _, ...settingsData } = req.body;
+      console.log("POST /settings - Settings data after removing userId:", settingsData);
+      const requestSettings = {
+        ...settingsData,
+        darkMode: settingsData.darkMode ?? false
+      };
+      const validatedSettings = insertSettingsSchema.parse({
+        ...requestSettings,
+        userId,
+        darkMode: requestSettings.darkMode ?? false
+        // Ensure darkMode is a boolean
+      });
+      console.log("POST /settings - Validated settings:", validatedSettings);
       const existingSettings = await storage.getSettingsByUserId(userId);
+      console.log("POST /settings - Existing settings:", existingSettings);
       let updatedSettings;
       if (existingSettings) {
-        updatedSettings = await storage.updateSettings(userId, settingsData);
+        console.log("POST /settings - Updating existing settings");
+        updatedSettings = await storage.updateSettings(userId, {
+          ...existingSettings,
+          ...validatedSettings,
+          id: existingSettings.id,
+          userId,
+          soundEnabled: validatedSettings.soundEnabled ?? existingSettings.soundEnabled,
+          vibrationEnabled: validatedSettings.vibrationEnabled ?? existingSettings.vibrationEnabled,
+          workDuration: validatedSettings.workDuration ?? existingSettings.workDuration,
+          breakDuration: validatedSettings.breakDuration ?? existingSettings.breakDuration,
+          iterations: validatedSettings.iterations ?? existingSettings.iterations,
+          darkMode: validatedSettings.darkMode ?? false
+          // Ensure darkMode is a boolean
+        });
       } else {
-        updatedSettings = await storage.createSettings(settingsData);
+        console.log("POST /settings - Creating new settings");
+        updatedSettings = await storage.createSettings({
+          ...validatedSettings,
+          userId,
+          soundEnabled: validatedSettings.soundEnabled ?? true,
+          vibrationEnabled: validatedSettings.vibrationEnabled ?? true,
+          workDuration: validatedSettings.workDuration ?? 25,
+          breakDuration: validatedSettings.breakDuration ?? 5,
+          iterations: validatedSettings.iterations ?? 4,
+          darkMode: validatedSettings.darkMode ?? false
+          // Ensure darkMode is a boolean
+        });
       }
-      res.json(updatedSettings);
+      const responseSettings = {
+        ...updatedSettings,
+        darkMode: updatedSettings.darkMode ?? false
+      };
+      console.log("POST /settings - Final settings to be sent:", responseSettings);
+      res.json(responseSettings);
     } catch (error) {
-      if (error instanceof ZodError) {
-        const validationError = fromZodError(error);
-        res.status(400).json({ message: validationError.message });
+      console.error("POST /settings - Error:", error);
+      if (error instanceof z2.ZodError) {
+        res.status(400).json({ error: "Invalid settings data" });
       } else {
-        res.status(500).json({ message: "Failed to update settings" });
+        res.status(500).json({ error: "Failed to update settings" });
       }
     }
   });
   router.get("/sessions", async (req, res) => {
     try {
       const userId = res.locals.userId;
-      const sessions2 = await storage.getSessionsByUserId(userId);
-      res.json(sessions2);
+      const sessions = await storage.getSessionsByUserId(userId);
+      res.json(sessions);
     } catch (error) {
       res.status(500).json({ message: "Failed to get sessions" });
     }
@@ -201,9 +250,9 @@ async function registerRoutes(app2) {
     try {
       const userId = res.locals.userId;
       const sessionData = insertSessionSchema.omit({ userId: true }).extend({
-        type: z.enum(["work", "break"]),
-        startTime: z.string().transform((str) => new Date(str)),
-        endTime: z.string().transform((str) => new Date(str))
+        type: z2.enum(["work", "break"]),
+        startTime: z2.string().transform((str) => new Date(str)),
+        endTime: z2.string().transform((str) => new Date(str))
       }).parse({ ...req.body, userId });
       const newSession = await storage.createSession(sessionData);
       res.status(201).json(newSession);
@@ -279,7 +328,7 @@ async function setupVite(app2, server) {
   const serverOptions = {
     middlewareMode: true,
     hmr: { server },
-    allowedHosts: true
+    allowedHosts: ["localhost"]
   };
   const vite = await createViteServer({
     ...vite_config_default,
@@ -318,7 +367,8 @@ async function setupVite(app2, server) {
   });
 }
 function serveStatic(app2) {
-  const distPath = path2.resolve(__dirname2, "public");
+  const distPath = path2.resolve(process.cwd(), "dist", "public");
+  console.log("Serving static files from:", distPath);
   if (!fs.existsSync(distPath)) {
     throw new Error(
       `Could not find the build directory: ${distPath}, make sure to build the client first`
@@ -331,7 +381,25 @@ function serveStatic(app2) {
 }
 
 // server/index.ts
+import cors from "cors";
 var app = express3();
+app.use(cors({
+  origin: "http://localhost:5173",
+  // Allow the Vite dev server origin
+  credentials: true,
+  // Allow credentials
+  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
+  // Allow specific methods
+  allowedHeaders: ["Content-Type", "Authorization", "Accept", "Origin", "X-Requested-With"],
+  // Allow specific headers
+  exposedHeaders: ["Content-Type", "Authorization", "Accept", "Origin", "X-Requested-With"],
+  // Expose specific headers
+  preflightContinue: false,
+  // Handle preflight requests
+  optionsSuccessStatus: 204
+  // Return 204 for OPTIONS requests
+}));
+app.options("*", cors());
 app.use(express3.json());
 app.use(express3.urlencoded({ extended: false }));
 app.use((req, res, next) => {
