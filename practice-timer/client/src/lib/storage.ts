@@ -2,6 +2,7 @@ interface Settings {
   userId: number;
   soundEnabled: boolean;
   vibrationEnabled: boolean;
+  browserNotificationsEnabled: boolean;
   workDuration: number;
   breakDuration: number;
   iterations: number;
@@ -21,6 +22,7 @@ const DEFAULT_SETTINGS: Settings = {
   userId: 1,
   soundEnabled: true,
   vibrationEnabled: true,
+  browserNotificationsEnabled: true,
   workDuration: 25,
   breakDuration: 5,
   iterations: 4,
@@ -39,17 +41,34 @@ class LocalStorage {
 
   async getSettingsByUserId(userId: number): Promise<Settings | null> {
     const settings = this.getItem<Settings>(`settings-${userId}`);
-    return settings || DEFAULT_SETTINGS;
+    if (!settings) return DEFAULT_SETTINGS;
+    
+    // Ensure all settings are included
+    return {
+      ...DEFAULT_SETTINGS,
+      ...settings,
+      browserNotificationsEnabled: settings.browserNotificationsEnabled ?? true
+    };
   }
 
   async createSettings(settings: Settings): Promise<Settings> {
-    const newSettings = { ...settings, id: Date.now() };
+    const newSettings = { 
+      ...DEFAULT_SETTINGS,
+      ...settings, 
+      id: Date.now(),
+      browserNotificationsEnabled: settings.browserNotificationsEnabled ?? true
+    };
     this.setItem(`settings-${settings.userId}`, newSettings);
     return newSettings;
   }
 
   async updateSettings(userId: number, settings: Settings): Promise<Settings> {
-    const updatedSettings = { ...settings, id: settings.id || Date.now() };
+    const updatedSettings = { 
+      ...DEFAULT_SETTINGS,
+      ...settings, 
+      id: settings.id || Date.now(),
+      browserNotificationsEnabled: settings.browserNotificationsEnabled ?? true
+    };
     this.setItem(`settings-${userId}`, updatedSettings);
     return updatedSettings;
   }

@@ -1,0 +1,93 @@
+// Timer Web Worker
+let timerInterval: number | null = null;
+let timeRemaining: number = 0;
+let isRunning: boolean = false;
+
+// Log when worker is created
+console.log('Timer Worker created');
+
+self.onmessage = (event) => {
+  const { type, payload } = event.data;
+  console.log('Worker received message:', type, payload);
+
+  switch (type) {
+    case 'START':
+      console.log('Worker: Starting timer with current time:', timeRemaining);
+      isRunning = true;
+      
+      // Clear any existing interval
+      if (timerInterval) {
+        clearInterval(timerInterval);
+        timerInterval = null;
+      }
+      
+      // Send initial tick
+      self.postMessage({ type: 'TICK', payload: { timeRemaining } });
+      
+      // Start the timer
+      timerInterval = self.setInterval(() => {
+        if (timeRemaining <= 1) {
+          console.log('Worker: Timer complete');
+          if (timerInterval) {
+            clearInterval(timerInterval);
+            timerInterval = null;
+          }
+          isRunning = false;
+          self.postMessage({ type: 'COMPLETE' });
+        } else {
+          timeRemaining--;
+          self.postMessage({ type: 'TICK', payload: { timeRemaining } });
+        }
+      }, 1000);
+      
+      console.log('Worker: Timer started');
+      break;
+
+    case 'PAUSE':
+      console.log('Worker: Pausing timer');
+      isRunning = false;
+      if (timerInterval) {
+        clearInterval(timerInterval);
+        timerInterval = null;
+      }
+      break;
+
+    case 'RESET':
+      console.log('Worker: Resetting timer');
+      isRunning = false;
+      if (timerInterval) {
+        clearInterval(timerInterval);
+        timerInterval = null;
+      }
+      timeRemaining = payload?.timeRemaining ?? timeRemaining;
+      break;
+
+    case 'UPDATE_TIME':
+      console.log('Worker: Updating time to:', payload?.timeRemaining);
+      timeRemaining = payload?.timeRemaining ?? timeRemaining;
+      if (isRunning) {
+        // If timer is running, restart it with new time
+        if (timerInterval) {
+          clearInterval(timerInterval);
+        }
+        timerInterval = self.setInterval(() => {
+          if (timeRemaining <= 1) {
+            console.log('Worker: Timer complete');
+            if (timerInterval) {
+              clearInterval(timerInterval);
+              timerInterval = null;
+            }
+            isRunning = false;
+            self.postMessage({ type: 'COMPLETE' });
+          } else {
+            timeRemaining--;
+            self.postMessage({ type: 'TICK', payload: { timeRemaining } });
+          }
+        }, 1000);
+      }
+      break;
+
+    default:
+      console.warn('Worker: Unknown message type:', type);
+  }
+}; 

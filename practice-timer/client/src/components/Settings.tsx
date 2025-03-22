@@ -5,6 +5,9 @@ import { Slider } from "@/components/ui/slider";
 import { useState, useEffect } from "react";
 import { SettingsType } from "@/lib/timerService";
 import { useDarkMode } from "@/lib/darkModeStore";
+import { useNotification } from "@/hooks/useNotification";
+import { useToast } from "@/hooks/use-toast";
+import { setVolume, playSound } from "@/lib/soundEffects";
 
 interface SettingsProps {
   settings: SettingsType;
@@ -14,12 +17,29 @@ interface SettingsProps {
 
 export default function Settings({ settings, isLoading, onChange }: SettingsProps) {
   const [localSettings, setLocalSettings] = useState<SettingsType>(settings);
+  const [soundVolume, setSoundVolume] = useState(0.5); // Default volume at 50%
   const setIsDark = useDarkMode(state => state.setIsDark);
+  const { requestNotificationPermission } = useNotification();
+  const { toast } = useToast();
   
   // Update local state when settings prop changes
   useEffect(() => {
     setLocalSettings(settings);
   }, [settings]);
+  
+  // Handle volume change
+  const handleVolumeChange = async (value: number[]) => {
+    const newVolume = value[0];
+    setSoundVolume(newVolume);
+    setVolume(newVolume);
+    
+    // Play preview sound
+    try {
+      await playSound('end');
+    } catch (error) {
+      console.error('Error playing preview sound:', error);
+    }
+  };
   
   // Handle toggle changes
   const handleToggleChange = (key: keyof SettingsType, value: boolean) => {
@@ -83,16 +103,45 @@ export default function Settings({ settings, isLoading, onChange }: SettingsProp
           />
         </div>
 
-        {/* Vibration toggle */}
+        {/* Sound Volume Slider */}
+        <div className="mt-4">
+          <div className="flex justify-between mb-1">
+            <Label className="text-sm text-muted-foreground">Sound Volume</Label>
+            <span className="text-sm font-medium">{Math.round(soundVolume * 100)}%</span>
+          </div>
+          <Slider
+            value={[soundVolume]}
+            min={0}
+            max={1}
+            step={0.1}
+            className="volume-slider"
+            onValueChange={handleVolumeChange}
+          />
+        </div>
+
+        {/* Browser notifications toggle */}
         <div className="flex items-center justify-between">
           <div className="flex items-center">
-            <span className="material-icons text-muted-foreground mr-3">vibration</span>
-            <Label htmlFor="vibration-toggle">Vibration</Label>
+            <span className="material-icons text-muted-foreground mr-3">notifications_active</span>
+            <Label htmlFor="browser-notifications-toggle">Browser Notifications</Label>
           </div>
           <Switch
-            id="vibration-toggle"
-            checked={localSettings.vibrationEnabled}
-            onCheckedChange={(checked) => handleToggleChange('vibrationEnabled', checked)}
+            id="browser-notifications-toggle"
+            checked={localSettings.browserNotificationsEnabled}
+            onCheckedChange={async (checked) => {
+              if (checked) {
+                const granted = await requestNotificationPermission();
+                if (!granted) {
+                  toast({
+                    title: "Notifications Disabled",
+                    description: "Please enable notifications in your browser settings to use this feature.",
+                    variant: "destructive",
+                  });
+                  return;
+                }
+              }
+              handleToggleChange('browserNotificationsEnabled', checked);
+            }}
           />
         </div>
 

@@ -4,6 +4,7 @@ export const config = {
   defaultSettings: {
     soundEnabled: true,
     vibrationEnabled: true,
+    browserNotificationsEnabled: true,
     workDuration: 25, // minutes
     breakDuration: 5,  // minutes
     iterations: 4,     // number of work-break cycles

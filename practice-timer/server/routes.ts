@@ -20,32 +20,47 @@ export async function registerRoutes(app: Express): Promise<Server> {
   router.get("/settings", async (req, res) => {
     try {
       const userId = res.locals.userId;
+      console.log('GET /settings - Request received for user:', userId);
+      
       let userSettings = await storage.getSettingsByUserId(userId);
+      console.log('GET /settings - Retrieved settings:', userSettings);
       
       if (!userSettings) {
+        console.log('GET /settings - No settings found, creating defaults');
         // Create default settings if none exist
         userSettings = await storage.createSettings({
           userId,
           soundEnabled: true,
-          vibrationEnabled: true,
+          browserNotificationsEnabled: true,
           workDuration: 25,
           breakDuration: 5,
           iterations: 4,
-          darkMode: false
+          darkMode: true
         });
+        console.log('GET /settings - Created default settings:', userSettings);
       }
       
-      // Ensure darkMode is included in the response
+      // Ensure all settings are included in the response
       const responseSettings = {
         ...userSettings,
-        darkMode: userSettings.darkMode ?? false
+        userId,
+        soundEnabled: userSettings.soundEnabled ?? true,
+        browserNotificationsEnabled: userSettings.browserNotificationsEnabled ?? true,
+        workDuration: userSettings.workDuration ?? 25,
+        breakDuration: userSettings.breakDuration ?? 5,
+        iterations: userSettings.iterations ?? 4,
+        darkMode: userSettings.darkMode ?? true
       };
       
       console.log('GET /settings - Returning settings:', responseSettings);
       res.json(responseSettings);
     } catch (error) {
       console.error('GET /settings - Error:', error);
-      res.status(500).json({ message: "Failed to get settings" });
+      if (error instanceof z.ZodError) {
+        res.status(400).json({ error: 'Invalid settings data' });
+      } else {
+        res.status(500).json({ error: 'Failed to get settings' });
+      }
     }
   });
 
@@ -62,18 +77,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { userId: _, ...settingsData } = req.body;
       console.log('POST /settings - Settings data after removing userId:', settingsData);
       
-      // Ensure darkMode is included in the request
+      // Ensure all settings are included in the request
       const requestSettings = {
         ...settingsData,
-        darkMode: settingsData.darkMode ?? false
+        userId,
+        soundEnabled: settingsData.soundEnabled ?? true,
+        browserNotificationsEnabled: settingsData.browserNotificationsEnabled ?? true,
+        workDuration: settingsData.workDuration ?? 25,
+        breakDuration: settingsData.breakDuration ?? 5,
+        iterations: settingsData.iterations ?? 4,
+        darkMode: settingsData.darkMode ?? true
       };
       
+      console.log('POST /settings - Request settings after defaults:', requestSettings);
+      
       // Validate the request body
-      const validatedSettings = insertSettingsSchema.parse({
-        ...requestSettings,
-        userId: userId,
-        darkMode: requestSettings.darkMode ?? false // Ensure darkMode is a boolean
-      });
+      const validatedSettings = insertSettingsSchema.parse(requestSettings);
       console.log('POST /settings - Validated settings:', validatedSettings);
 
       // Check if settings exist for the user
@@ -87,32 +106,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
           ...existingSettings,
           ...validatedSettings,
           id: existingSettings.id,
-          userId: userId,
-          soundEnabled: validatedSettings.soundEnabled ?? existingSettings.soundEnabled,
-          vibrationEnabled: validatedSettings.vibrationEnabled ?? existingSettings.vibrationEnabled,
-          workDuration: validatedSettings.workDuration ?? existingSettings.workDuration,
-          breakDuration: validatedSettings.breakDuration ?? existingSettings.breakDuration,
-          iterations: validatedSettings.iterations ?? existingSettings.iterations,
-          darkMode: validatedSettings.darkMode ?? false // Ensure darkMode is a boolean
+          userId
         });
       } else {
         console.log('POST /settings - Creating new settings');
-        updatedSettings = await storage.createSettings({
-          ...validatedSettings,
-          userId: userId,
-          soundEnabled: validatedSettings.soundEnabled ?? true,
-          vibrationEnabled: validatedSettings.vibrationEnabled ?? true,
-          workDuration: validatedSettings.workDuration ?? 25,
-          breakDuration: validatedSettings.breakDuration ?? 5,
-          iterations: validatedSettings.iterations ?? 4,
-          darkMode: validatedSettings.darkMode ?? false // Ensure darkMode is a boolean
-        });
+        updatedSettings = await storage.createSettings(validatedSettings);
       }
 
-      // Ensure darkMode is included in the response
+      console.log('POST /settings - Updated settings:', updatedSettings);
+
+      // Ensure all settings are included in the response
       const responseSettings = {
         ...updatedSettings,
-        darkMode: updatedSettings.darkMode ?? false
+        userId,
+        soundEnabled: updatedSettings.soundEnabled ?? true,
+        browserNotificationsEnabled: updatedSettings.browserNotificationsEnabled ?? true,
+        workDuration: updatedSettings.workDuration ?? 25,
+        breakDuration: updatedSettings.breakDuration ?? 5,
+        iterations: updatedSettings.iterations ?? 4,
+        darkMode: updatedSettings.darkMode ?? true
       };
       
       console.log('POST /settings - Final settings to be sent:', responseSettings);
@@ -120,7 +132,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error('POST /settings - Error:', error);
       if (error instanceof z.ZodError) {
-        res.status(400).json({ error: 'Invalid settings data' });
+        console.error('POST /settings - Validation error:', error.errors);
+        res.status(400).json({ error: 'Invalid settings data', details: error.errors });
       } else {
         res.status(500).json({ error: 'Failed to update settings' });
       }
@@ -153,7 +166,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         })
         .parse({ ...req.body, userId });
       
-      const newSession = await storage.createSession(sessionData);
+      const newSession = await storage.createSession({
+        ...sessionData,
+        userId
+      });
       res.status(201).json(newSession);
     } catch (error) {
       if (error instanceof ZodError) {
@@ -162,6 +178,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
       } else {
         res.status(500).json({ message: "Failed to create session" });
       }
+    }
+  });
+
+  // Subscribe to push notifications
+  router.post("/notifications/subscribe", async (req, res) => {
+    try {
+      const userId = res.locals.userId;
+      const subscription = req.body;
+      
+      // Store the subscription for the user
+      await storage.savePushSubscription(userId, subscription);
+      
+      res.status(201).json({ message: "Successfully subscribed to notifications" });
+    } catch (error) {
+      console.error('Error subscribing to notifications:', error);
+      res.status(500).json({ error: 'Failed to subscribe to notifications' });
     }
   });
 

@@ -1,4 +1,4 @@
-import { users, type User, type InsertUser, settings, type Settings, type InsertSettings, sessions, type Session, type InsertSession } from "@shared/schema";
+import { users, type User, type InsertUser, settings, type Settings, type InsertSettings, sessions, type Session, type InsertSession, type PushSubscription } from "@shared/schema";
 
 export interface IStorage {
   // User management
@@ -14,23 +14,30 @@ export interface IStorage {
   // Session management
   getSessionsByUserId(userId: number): Promise<Session[]>;
   createSession(session: InsertSession): Promise<Session>;
+
+  // Push notification methods
+  savePushSubscription(userId: number, subscription: PushSubscription): Promise<void>;
+  getPushSubscription(userId: number): Promise<PushSubscription | null>;
+  deletePushSubscription(userId: number): Promise<void>;
 }
 
 export class MemStorage implements IStorage {
   private users: Map<number, User>;
+  private sessions: Map<number, Session>;
   private userSettings: Map<number, Settings>;
-  private userSessions: Map<number, Session[]>;
   private userIdCounter: number;
-  private settingsIdCounter: number;
   private sessionIdCounter: number;
+  private settingsIdCounter: number;
+  private pushSubscriptions: Map<number, PushSubscription>;
 
   constructor() {
     this.users = new Map();
+    this.sessions = new Map();
     this.userSettings = new Map();
-    this.userSessions = new Map();
+    this.pushSubscriptions = new Map();
     this.userIdCounter = 1;
-    this.settingsIdCounter = 1;
     this.sessionIdCounter = 1;
+    this.settingsIdCounter = 1;
     
     // Initialize with a default user
     this.createUser({
@@ -80,6 +87,7 @@ export class MemStorage implements IStorage {
       userId: insertSettings.userId ?? 1, // Default to user 1 if not provided
       soundEnabled: insertSettings.soundEnabled ?? true,
       vibrationEnabled: insertSettings.vibrationEnabled ?? true,
+      browserNotificationsEnabled: insertSettings.browserNotificationsEnabled ?? true,
       workDuration: insertSettings.workDuration ?? 25,
       breakDuration: insertSettings.breakDuration ?? 5,
       iterations: insertSettings.iterations ?? 4,
@@ -110,6 +118,7 @@ export class MemStorage implements IStorage {
       // Ensure all fields are properly merged
       soundEnabled: settings.soundEnabled ?? existingSettings.soundEnabled,
       vibrationEnabled: settings.vibrationEnabled ?? existingSettings.vibrationEnabled,
+      browserNotificationsEnabled: settings.browserNotificationsEnabled ?? existingSettings.browserNotificationsEnabled,
       workDuration: settings.workDuration ?? existingSettings.workDuration,
       breakDuration: settings.breakDuration ?? existingSettings.breakDuration,
       iterations: settings.iterations ?? existingSettings.iterations,
@@ -131,7 +140,7 @@ export class MemStorage implements IStorage {
   // Session methods
   async getSessionsByUserId(userId: number): Promise<Session[]> {
     // Get sessions for user or return empty array
-    return this.userSessions.get(userId) || [];
+    return this.sessions.get(userId) || [];
   }
 
   async createSession(insertSession: InsertSession): Promise<Session> {
@@ -147,11 +156,27 @@ export class MemStorage implements IStorage {
     };
     
     // Add to user's sessions
-    const userSessions = this.userSessions.get(userId) || [];
+    const userSessions = this.sessions.get(userId) || [];
     userSessions.push(session);
-    this.userSessions.set(userId, userSessions);
+    this.sessions.set(userId, userSessions);
     
     return session;
+  }
+
+  // Push notification methods
+  async savePushSubscription(userId: number, subscription: PushSubscription): Promise<void> {
+    console.log('Storage - Saving push subscription for user:', userId);
+    this.pushSubscriptions.set(userId, subscription);
+  }
+
+  async getPushSubscription(userId: number): Promise<PushSubscription | null> {
+    console.log('Storage - Getting push subscription for user:', userId);
+    return this.pushSubscriptions.get(userId) || null;
+  }
+
+  async deletePushSubscription(userId: number): Promise<void> {
+    console.log('Storage - Deleting push subscription for user:', userId);
+    this.pushSubscriptions.delete(userId);
   }
 }
 

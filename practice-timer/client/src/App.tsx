@@ -7,14 +7,25 @@ import { useQuery } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { SettingsType, DEFAULT_SETTINGS } from "@/lib/timerService";
 import { useDarkMode } from "@/lib/darkModeStore";
+import { getQueryFn } from "@/lib/queryClient";
+import { Toaster } from 'react-hot-toast';
+import { useSettingsStore } from '@/stores/settingsStore';
+import { API_BASE_URL } from '@/lib/queryClient';
 
 function App() {
   // Fetch user settings from the server with staleTime: 0 to ensure fresh data
-  const { data: settings } = useQuery<SettingsType>({
+  const { data: settings, isLoading: isLoadingSettings } = useQuery({
     queryKey: ['/api/settings'],
-    staleTime: 0, // Always fetch fresh data
-    refetchOnMount: true,
-    refetchOnWindowFocus: true
+    queryFn: async () => {
+      const response = await fetch(`${API_BASE_URL}/settings`);
+      if (!response.ok) throw new Error('Failed to fetch settings');
+      return response.json();
+    },
+    staleTime: 0,
+    select: (data) => ({
+      ...data,
+      darkMode: data.darkMode ?? true // Default to dark mode if not set
+    })
   });
 
   // Get the current settings with fallback to defaults
@@ -25,6 +36,13 @@ function App() {
   useEffect(() => {
     setIsDark(currentSettings.darkMode);
   }, [currentSettings.darkMode, setIsDark]);
+
+  // Set theme based on settings
+  useEffect(() => {
+    if (settings) {
+      document.documentElement.classList.toggle('dark', settings.darkMode);
+    }
+  }, [settings?.darkMode]);
 
   // Subscribe to settings changes
   useEffect(() => {

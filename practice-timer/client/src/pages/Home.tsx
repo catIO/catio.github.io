@@ -10,11 +10,14 @@ import { useToast } from "@/hooks/use-toast";
 import { SettingsType, DEFAULT_SETTINGS } from "@/lib/timerService";
 import { Button } from "@/components/ui/button";
 import { Link } from "wouter";
+import { resumeAudioContext } from "@/lib/soundEffects";
+import { getQueryFn } from "@/lib/queryClient";
 
 export default function Home() {
   // Fetch user settings from the server
   const { data: settings, isLoading: isLoadingSettings } = useQuery<SettingsType>({
     queryKey: ['/api/settings'],
+    queryFn: getQueryFn({ on401: "returnNull" }),
     staleTime: 0,
     refetchOnMount: true,
     refetchOnWindowFocus: true
@@ -47,10 +50,20 @@ export default function Home() {
     totalIterations
   } = useTimer({
     initialSettings: currentSettings,
-    onComplete: () => {
-      // Trigger notification
+    onComplete: async () => {
+      // Trigger notification and sound
       if (currentSettings.soundEnabled) {
-        playSound();
+        try {
+          await playSound();
+          console.log('Timer completion sound played successfully');
+        } catch (error) {
+          console.error('Error playing timer completion sound:', error);
+          toast({
+            title: "Sound Playback Failed",
+            description: "Could not play the completion sound. Please check your browser's sound settings.",
+            variant: "destructive",
+          });
+        }
       }
       if (currentSettings.vibrationEnabled) {
         vibrate();
@@ -59,8 +72,23 @@ export default function Home() {
   });
 
   // Setup notifications and toast
-  const { playSound, vibrate } = useNotification();
+  const { playSound, vibrate, requestNotificationPermission } = useNotification();
   const { toast } = useToast();
+
+  // Initialize notifications on mount
+  useEffect(() => {
+    const initNotifications = async () => {
+      try {
+        console.log('Initializing notifications...');
+        const granted = await requestNotificationPermission();
+        console.log('Notification permission status:', granted);
+      } catch (error) {
+        console.error('Error initializing notifications:', error);
+      }
+    };
+
+    initNotifications();
+  }, [requestNotificationPermission]);
 
   // Update timer settings when server data is loaded or settings change
   useEffect(() => {
@@ -91,6 +119,44 @@ export default function Home() {
       variant: "default",
     });
   }, [resetTimer, toast]);
+
+  // Initialize audio context on mount and user interaction
+  useEffect(() => {
+    const initAudio = async () => {
+      try {
+        console.log('Initializing audio context...');
+        await resumeAudioContext();
+        console.log('Audio context initialized successfully');
+      } catch (error) {
+        console.error('Error initializing audio context:', error);
+        toast({
+          title: "Audio Initialization Failed",
+          description: "Please try clicking anywhere on the page to enable sound.",
+          variant: "destructive",
+        });
+      }
+    };
+
+    // Try to initialize on mount
+    initAudio();
+
+    // Initialize on user interaction
+    const handleInteraction = async () => {
+      console.log('User interaction detected, initializing audio...');
+      await initAudio();
+      // Remove listeners after first interaction
+      document.removeEventListener('click', handleInteraction);
+      document.removeEventListener('touchstart', handleInteraction);
+    };
+
+    document.addEventListener('click', handleInteraction);
+    document.addEventListener('touchstart', handleInteraction);
+
+    return () => {
+      document.removeEventListener('click', handleInteraction);
+      document.removeEventListener('touchstart', handleInteraction);
+    };
+  }, [toast]);
 
   return (
     <div className="bg-background text-foreground font-sans min-h-screen">

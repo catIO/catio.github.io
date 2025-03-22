@@ -1,88 +1,63 @@
-import express, { type Request, Response, NextFunction } from "express";
-import { registerRoutes } from "./routes";
-import { setupVite, serveStatic, log } from "./vite";
+import express from "express";
 import cors from "cors";
+import { createServer } from "http";
+import { registerRoutes } from "./routes";
+import { createViteDevServer } from "./vite";
+import path from 'path';
+import { fileURLToPath } from 'url';
 
-const app = express();
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
-// Add CORS middleware
-app.use(cors({
-  origin: 'http://localhost:5173', // Allow the Vite dev server origin
-  credentials: true, // Allow credentials
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'], // Allow specific methods
-  allowedHeaders: ['Content-Type', 'Authorization', 'Accept', 'Origin', 'X-Requested-With'], // Allow specific headers
-  exposedHeaders: ['Content-Type', 'Authorization', 'Accept', 'Origin', 'X-Requested-With'], // Expose specific headers
-  preflightContinue: false, // Handle preflight requests
-  optionsSuccessStatus: 204 // Return 204 for OPTIONS requests
-}));
+async function startServer() {
+  const app = express();
+  const server = createServer(app);
+  const PORT = 3000;
+  const host = process.env.HOST || "localhost";
 
-// Add preflight handling for all routes
-app.options('*', cors());
+  // CORS configuration
+  app.use(cors({
+    origin: ['http://localhost:5173'],
+    credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization'],
+    exposedHeaders: ['Content-Range', 'X-Content-Range'],
+    optionsSuccessStatus: 200
+  }));
 
-app.use(express.json());
-app.use(express.urlencoded({ extended: false }));
+  // Parse JSON bodies
+  app.use(express.json());
 
-app.use((req, res, next) => {
-  const start = Date.now();
-  const path = req.path;
-  let capturedJsonResponse: Record<string, any> | undefined = undefined;
+  // Setup routes
+  registerRoutes(app);
 
-  const originalResJson = res.json;
-  res.json = function (bodyJson, ...args) {
-    capturedJsonResponse = bodyJson;
-    return originalResJson.apply(res, [bodyJson, ...args]);
-  };
-
-  res.on("finish", () => {
-    const duration = Date.now() - start;
-    if (path.startsWith("/api")) {
-      let logLine = `${req.method} ${path} ${res.statusCode} in ${duration}ms`;
-      if (capturedJsonResponse) {
-        logLine += ` :: ${JSON.stringify(capturedJsonResponse)}`;
-      }
-
-      if (logLine.length > 80) {
-        logLine = logLine.slice(0, 79) + "…";
-      }
-
-      log(logLine);
-    }
+  // Error handling middleware
+  app.use((err: Error, req: express.Request, res: express.Response, next: express.NextFunction) => {
+    console.error(err.stack);
+    res.status(500).json({ error: 'Something broke!' });
   });
 
-  next();
-});
+  // Create and start the Vite dev server
+  const vite = await createViteDevServer();
 
-(async () => {
-  const server = await registerRoutes(app);
+  // Use Vite's middleware in development
+  app.use(vite.middlewares);
 
-  app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
-    const status = err.status || err.statusCode || 500;
-    const message = err.message || "Internal Server Error";
+  // Only serve static files in production
+  if (process.env.NODE_ENV === 'production') {
+    // Serve static files from the client/dist directory in production
+    app.use(express.static(path.join(__dirname, '../client/dist')));
 
-    res.status(status).json({ message });
-    throw err;
-  });
-
-  // importantly only setup vite in development and after
-  // setting up all the other routes so the catch-all route
-  // doesn't interfere with the other routes
-  if (app.get("env") === "development") {
-    await setupVite(app, server);
-  } else {
-    serveStatic(app);
+    // Handle all other routes by serving the index.html
+    app.get('*', (req, res) => {
+      res.sendFile(path.join(__dirname, '../client/dist/index.html'));
+    });
   }
 
-  // ALWAYS serve the app on port 5000
-  // this serves both the API and the client.
-  // It is the only port that is not firewalled.
-  const port = process.env.PORT || 5000;
-  const host = process.env.HOST || "localhost"; // Default to localhost if HOST is not set
-  
-  server.listen({
-    port,
-    host, // Use variable
-  }, () => {
-    log(`Serving on http://${host}:${port}`);
+  // Start the server
+  server.listen(PORT, () => {
+    console.log(`API Server running at http://${host}:${PORT}`);
   });
-  
-})();
+}
+
+startServer().catch(console.error);

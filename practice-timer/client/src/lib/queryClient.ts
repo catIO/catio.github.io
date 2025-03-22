@@ -1,5 +1,7 @@
 import { QueryClient, QueryFunction } from "@tanstack/react-query";
 
+export const API_BASE_URL = 'http://localhost:3000/api';
+
 async function throwIfResNotOk(res: Response) {
   if (!res.ok) {
     const text = (await res.text()) || res.statusText;
@@ -9,12 +11,11 @@ async function throwIfResNotOk(res: Response) {
 
 export async function apiRequest(method: string, path: string, data?: any) {
   console.log('Making API request:', { method, path, data });
-  const response = await fetch(`http://localhost:5000${path}`, {
+  const response = await fetch(`${API_BASE_URL}${path}`, {
     method,
     headers: {
       'Content-Type': 'application/json',
       'Accept': 'application/json',
-      'Origin': 'http://localhost:5173'
     },
     credentials: 'include',
     body: data ? JSON.stringify(data) : undefined,
@@ -38,12 +39,11 @@ export const getQueryFn: <T>(options: {
 }) => QueryFunction<T> =
   ({ on401: unauthorizedBehavior }) =>
   async ({ queryKey }) => {
-    const res = await fetch(`http://localhost:5000${queryKey[0]}`, {
+    const res = await fetch(`${API_BASE_URL}${queryKey[0]}`, {
       credentials: "include",
       headers: {
         'Content-Type': 'application/json',
         'Accept': 'application/json',
-        'Origin': 'http://localhost:5173'
       },
     });
 
@@ -58,14 +58,36 @@ export const getQueryFn: <T>(options: {
 export const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      queryFn: getQueryFn({ on401: "throw" }),
-      refetchInterval: false,
+      staleTime: 0,
+      refetchOnMount: true,
       refetchOnWindowFocus: false,
-      staleTime: Infinity,
-      retry: false,
+      retry: 1,
     },
     mutations: {
-      retry: false,
+      retry: 1,
     },
   },
 });
+
+export const api = {
+  get: async (endpoint: string) => {
+    const response = await fetch(`${API_BASE_URL}${endpoint}`);
+    if (!response.ok) {
+      throw new Error(`API Error: ${response.statusText}`);
+    }
+    return response.json();
+  },
+  post: async (endpoint: string, data: any) => {
+    const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(data),
+    });
+    if (!response.ok) {
+      throw new Error(`API Error: ${response.statusText}`);
+    }
+    return response.json();
+  },
+};

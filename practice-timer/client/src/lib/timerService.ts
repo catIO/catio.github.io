@@ -6,6 +6,7 @@ export interface SettingsType {
   userId?: number;
   soundEnabled: boolean;
   vibrationEnabled: boolean;
+  browserNotificationsEnabled: boolean;
   workDuration: number;
   breakDuration: number;
   iterations: number;
