@@ -189,12 +189,26 @@ export function useTimer({ initialSettings, onComplete }: UseTimerProps) {
         .catch(err => console.log('Error releasing wake lock:', err));
     }
 
+    const newMode = resetCurrentOnly ? mode : 'work';
+    const newTime = newMode === 'work' ? settings.workDuration * 60 : settings.breakDuration * 60;
+
+    if (!resetCurrentOnly) {
+      // Reset to first work session
+      setMode('work');
+      setCurrentIteration(1);
+    }
+
+    // Update time state
+    setTimeRemaining(newTime);
+    setTotalTime(newTime);
+
+    // Send reset message to worker with new time
     workerRef.current.postMessage({ 
       type: 'RESET',
-      payload: { resetCurrentOnly }
+      payload: { timeRemaining: newTime }
     });
     setIsRunning(false);
-  }, []);
+  }, [mode, settings]);
 
   // Skip timer
   const skipTimer = useCallback(() => {
@@ -205,8 +219,35 @@ export function useTimer({ initialSettings, onComplete }: UseTimerProps) {
     
     const nextMode = mode === 'work' ? 'break' : 'work';
     setMode(nextMode);
-    initializeTimer(nextMode, settings);
-  }, [mode, settings, initializeTimer]);
+
+    // If we're moving from break to work, increment the iteration
+    if (mode === 'break') {
+      const nextIteration = currentIteration + 1;
+      if (nextIteration > totalIterations) {
+        // If we've completed all iterations, reset to first iteration
+        setCurrentIteration(1);
+        toast({
+          title: "Practice Complete",
+          description: "All iterations completed! Starting new cycle.",
+          variant: "default",
+        });
+      } else {
+        setCurrentIteration(nextIteration);
+      }
+    }
+
+    // Initialize the timer for the next session
+    const nextDuration = nextMode === 'work' ? settings.workDuration : settings.breakDuration;
+    setTimeRemaining(nextDuration * 60);
+    setTotalTime(nextDuration * 60);
+
+    if (workerRef.current) {
+      workerRef.current.postMessage({
+        type: 'UPDATE_TIME',
+        payload: { timeRemaining: nextDuration * 60 }
+      });
+    }
+  }, [mode, settings, currentIteration, totalIterations, toast]);
 
   // Initialize timer when mode changes
   useEffect(() => {
