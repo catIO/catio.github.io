@@ -52,27 +52,22 @@ export default function Home() {
     initialSettings: currentSettings,
     onComplete: async () => {
       // Trigger notification and sound
-      if (currentSettings.soundEnabled) {
-        try {
-          await playSound();
-          console.log('Timer completion sound played successfully');
-        } catch (error) {
-          console.error('Error playing timer completion sound:', error);
-          toast({
-            title: "Sound Playback Failed",
-            description: "Could not play the completion sound. Please check your browser's sound settings.",
-            variant: "destructive",
-          });
-        }
+      if (settings?.soundEnabled) {
+        playSound();
       }
-      if (currentSettings.vibrationEnabled) {
-        vibrate();
+      if (settings?.browserNotificationsEnabled) {
+        showNotification('Timer Complete!', {
+          body: 'Time to take a break!',
+          silent: false,
+          tag: 'timer-complete',
+          requireInteraction: true
+        });
       }
     }
   });
 
   // Setup notifications and toast
-  const { playSound, vibrate, requestNotificationPermission } = useNotification();
+  const { playSound, requestNotificationPermission, showNotification } = useNotification();
   const { toast } = useToast();
 
   // Initialize notifications on mount

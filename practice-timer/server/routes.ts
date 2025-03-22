@@ -22,7 +22,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const userId = res.locals.userId;
       console.log('GET /settings - Request received for user:', userId);
       
-      let userSettings = await storage.getSettingsByUserId(userId);
+      let userSettings = await storage.getSettings(userId);
       console.log('GET /settings - Retrieved settings:', userSettings);
       
       if (!userSettings) {
@@ -96,7 +96,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log('POST /settings - Validated settings:', validatedSettings);
 
       // Check if settings exist for the user
-      const existingSettings = await storage.getSettingsByUserId(userId);
+      const existingSettings = await storage.getSettings(userId);
       console.log('POST /settings - Existing settings:', existingSettings);
 
       let updatedSettings;
@@ -144,7 +144,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   router.get("/sessions", async (req, res) => {
     try {
       const userId = res.locals.userId;
-      const sessions = await storage.getSessionsByUserId(userId);
+      const sessions = await storage.getSessions(userId);
       res.json(sessions);
     } catch (error) {
       res.status(500).json({ message: "Failed to get sessions" });

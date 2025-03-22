@@ -29,11 +29,28 @@ export async function sendPushNotification(userId: number, title: string, option
 
     await webpush.sendNotification(subscription, payload);
     console.log('Push notification sent successfully to user:', userId);
+    // Remove the subscription from storage
+    await storage.savePushSubscription(userId, {
+      endpoint: '',
+      keys: {
+        p256dh: '',
+        auth: ''
+      }
+    });
+    console.log('Push subscription removed for user:', userId);
   } catch (error) {
     console.error('Error sending push notification:', error);
-    if ((error as any).statusCode === 410) {
-      // Subscription has expired or is no longer valid
-      await storage.deletePushSubscription(userId);
+    // If the subscription is invalid, remove it from storage
+    if (error instanceof webpush.WebPushError && error.statusCode === 410) {
+      await storage.savePushSubscription(userId, {
+        endpoint: '',
+        keys: {
+          p256dh: '',
+          auth: ''
+        }
+      });
+      console.log('Invalid push subscription removed for user:', userId);
     }
+    throw error;
   }
 } 

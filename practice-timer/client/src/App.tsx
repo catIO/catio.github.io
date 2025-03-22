@@ -17,7 +17,7 @@ function App() {
   const { data: settings, isLoading: isLoadingSettings } = useQuery({
     queryKey: ['/api/settings'],
     queryFn: async () => {
-      const response = await fetch(`${API_BASE_URL}/settings`);
+      const response = await fetch('/api/settings');
       if (!response.ok) throw new Error('Failed to fetch settings');
       return response.json();
     },
@@ -31,18 +31,22 @@ function App() {
   // Get the current settings with fallback to defaults
   const currentSettings: SettingsType = settings || DEFAULT_SETTINGS;
   const setIsDark = useDarkMode(state => state.setIsDark);
+  const setSettings = useSettingsStore(state => state.setSettings);
   
-  // Initialize dark mode from settings
-  useEffect(() => {
-    setIsDark(currentSettings.darkMode);
-  }, [currentSettings.darkMode, setIsDark]);
-
-  // Set theme based on settings
+  // Initialize settings store
   useEffect(() => {
     if (settings) {
+      setSettings(settings);
+    }
+  }, [settings, setSettings]);
+
+  // Initialize dark mode from settings
+  useEffect(() => {
+    if (settings) {
+      setIsDark(settings.darkMode);
       document.documentElement.classList.toggle('dark', settings.darkMode);
     }
-  }, [settings?.darkMode]);
+  }, [settings?.darkMode, setIsDark]);
 
   // Subscribe to settings changes
   useEffect(() => {
@@ -61,6 +65,7 @@ function App() {
 
   return (
     <div className="min-h-screen bg-background text-foreground transition-colors duration-200">
+      <Toaster />
       <Switch>
         <Route path="/" component={Home} />
         <Route path="/settings" component={Settings} />
