@@ -5,11 +5,6 @@ import { useNotification } from './useNotification';
 import { useToast } from '@/hooks/use-toast';
 import { resumeAudioContext } from '@/lib/soundEffects';
 
-interface WakeLock {
-  released: boolean;
-  release: () => Promise<void>;
-}
-
 interface UseTimerProps {
   initialSettings: SettingsType;
   onComplete?: () => void;
@@ -24,49 +19,146 @@ export function useTimer({ initialSettings, onComplete }: UseTimerProps) {
   const [currentIteration, setCurrentIteration] = useState(1);
   const [totalIterations, setTotalIterations] = useState(initialSettings.iterations || 4);
   
-  const workerRef = useRef<Worker | null>(null);
+  const timerRef = useRef<number | null>(null);
   const { showNotification } = useNotification();
-  const wakeLockRef = useRef<WakeLock | null>(null);
   const { toast } = useToast();
+
+  // Initialize timer based on current mode and settings
+  const initializeTimer = useCallback((currentMode: 'work' | 'break', currentSettings: SettingsType) => {
+    const duration = currentMode === 'work' 
+      ? currentSettings.workDuration 
+      : currentSettings.breakDuration;
+    
+    setTimeRemaining(duration * 60);
+    setTotalTime(duration * 60);
+  }, []);
+
+  // Update settings
+  const updateSettings = useCallback((newSettings: SettingsType) => {
+    setSettings(newSettings);
+    setTotalIterations(newSettings.iterations);
+    initializeTimer(mode, newSettings);
+  }, [mode, initializeTimer]);
+
+  // Start timer
+  const startTimer = useCallback(async () => {
+    if (!isRunning) {
+      try {
+        // Resume audio context for sound
+        await resumeAudioContext();
+        setIsRunning(true);
+      } catch (error) {
+        console.error('Error starting timer:', error);
+        toast({
+          title: "Error Starting Timer",
+          description: "Could not start the timer. Please try again.",
+          variant: "destructive",
+        });
+      }
+    }
+  }, [isRunning, toast]);
+
+  // Pause timer
+  const pauseTimer = useCallback(() => {
+    if (isRunning) {
+      setIsRunning(false);
+    }
+  }, [isRunning]);
+
+  // Reset timer
+  const resetTimer = useCallback((currentTimerOnly = false) => {
+    // Clear any existing interval
+    if (timerRef.current) {
+      clearInterval(timerRef.current);
+      timerRef.current = null;
+    }
+    
+    setIsRunning(false);
+    
+    if (currentTimerOnly) {
+      // Only reset the current timer duration
+      initializeTimer(mode, settings);
+    } else {
+      // Reset to work mode and first iteration
+      setMode('work');
+      setCurrentIteration(1);
+      // Initialize timer for work mode
+      initializeTimer('work', settings);
+    }
+  }, [settings, mode, initializeTimer]);
+
+  // Skip timer
+  const skipTimer = useCallback(() => {
+    // Clear any existing interval
+    if (timerRef.current) {
+      clearInterval(timerRef.current);
+      timerRef.current = null;
+    }
+    
+    setIsRunning(false);
+    const nextMode = mode === 'work' ? 'break' : 'work';
+    
+    // If we're switching from break to work, increment iteration
+    if (mode === 'break') {
+      setCurrentIteration(prev => {
+        const next = prev + 1;
+        if (next > totalIterations) {
+          // Reset to first iteration if we've completed all iterations
+          return 1;
+        }
+        return next;
+      });
+    }
+    
+    setMode(nextMode);
+    initializeTimer(nextMode, settings);
+  }, [mode, settings, initializeTimer, totalIterations]);
 
   // Complete current session and start next one
   const completeSession = useCallback(async () => {
-    // Update iterations and mode
-    setCurrentIteration(prev => {
-      const newIteration = prev + 1;
-      if (newIteration > totalIterations) {
-        // All iterations completed
-        setIsRunning(false);
-        setMode('work');
-        setCurrentIteration(1);
-        setTimeRemaining(settings.workDuration * 60);
-        setTotalTime(settings.workDuration * 60);
-
-        // Show completion notification
-        if (settings.browserNotificationsEnabled) {
-          showNotification('Practice Cycle Complete! 🎉', {
-            body: 'Great job! You\'ve completed all your practice sessions.',
-          });
-        }
-
-        return 1;
-      } else {
-        // Switch mode
-        const newMode = mode === 'work' ? 'break' : 'work';
-        setMode(newMode);
-        setTimeRemaining(newMode === 'work' ? settings.workDuration * 60 : settings.breakDuration * 60);
-        setTotalTime(newMode === 'work' ? settings.workDuration * 60 : settings.breakDuration * 60);
-
-        // Show session completion notification
-        if (settings.browserNotificationsEnabled) {
-          showNotification(`${newMode === 'work' ? 'Work' : 'Break'} Session Complete! ${newMode === 'work' ? '💪' : '☕'}`, {
-            body: `Time for a ${newMode === 'work' ? 'break' : 'work'} session.`,
-          });
-        }
-
-        return newIteration;
+    // Clear any existing interval
+    if (timerRef.current) {
+      clearInterval(timerRef.current);
+      timerRef.current = null;
+    }
+    
+    if (onComplete) {
+      onComplete();
+    }
+    
+    // Handle iteration management
+    let nextMode: 'work' | 'break' = mode === 'work' ? 'break' : 'work';
+    let nextIteration = currentIteration;
+    
+    // If we're finishing a break session, increment the iteration counter
+    if (mode === 'break') {
+      nextIteration = currentIteration + 1;
+    }
+    
+    // Check if we've completed all iterations
+    if (nextIteration > totalIterations && mode === 'break') {
+      // Reset for a new cycle
+      nextMode = 'work';
+      nextIteration = 1;
+      
+      // Show completion notification
+      if (settings.browserNotificationsEnabled) {
+        showNotification('Practice Cycle Complete! 🎉', {
+          body: 'Great job! You\'ve completed all your practice sessions.',
+        });
       }
-    });
+    } else {
+      // Show session completion notification
+      if (settings.browserNotificationsEnabled) {
+        showNotification(`${nextMode === 'work' ? 'Work' : 'Break'} Session Complete! ${nextMode === 'work' ? '💪' : '☕'}`, {
+          body: `Time for a ${nextMode === 'work' ? 'break' : 'work'} session.`,
+        });
+      }
+    }
+    
+    setMode(nextMode);
+    setCurrentIteration(nextIteration);
+    initializeTimer(nextMode, settings);
 
     // Save session to server
     try {
@@ -80,172 +172,45 @@ export function useTimer({ initialSettings, onComplete }: UseTimerProps) {
     } catch (error) {
       console.error('Error saving session:', error);
     }
-  }, [mode, settings, totalIterations, showNotification]);
+  }, [mode, settings, onComplete, initializeTimer, currentIteration, totalIterations, showNotification]);
 
-  // Setup worker message handler
-  const setupWorkerMessageHandler = useCallback((worker: Worker) => {
-    worker.onmessage = (event) => {
-      const { type, payload } = event.data;
-      console.log('Received message from worker:', type, payload);
-      
-      switch (type) {
-        case 'TICK':
-          setTimeRemaining(payload.timeRemaining);
-          break;
-        case 'COMPLETE':
-          setIsRunning(false);
-          if (onComplete) {
-            console.log('Timer completed, calling onComplete callback');
-            onComplete();
+  // Timer logic
+  useEffect(() => {
+    // Clear any existing interval when running state changes
+    if (timerRef.current) {
+      clearInterval(timerRef.current);
+      timerRef.current = null;
+    }
+
+    if (isRunning) {
+      timerRef.current = window.setInterval(() => {
+        setTimeRemaining((prevTime) => {
+          if (prevTime <= 1) {
+            // Timer complete
+            clearInterval(timerRef.current!);
+            timerRef.current = null;
+            setIsRunning(false);
+            completeSession();
+            return 0;
           }
-          completeSession();
-          break;
+          return prevTime - 1;
+        });
+      }, 1000);
+    }
+
+    // Cleanup function
+    return () => {
+      if (timerRef.current) {
+        clearInterval(timerRef.current);
+        timerRef.current = null;
       }
     };
-
-    worker.onerror = (error) => {
-      console.error('Worker error:', error);
-    };
-  }, [onComplete, completeSession]);
-
-  // Initialize Web Worker
-  useEffect(() => {
-    if (!workerRef.current) {
-      console.log('Initializing Web Worker');
-      workerRef.current = new Worker(
-        new URL('../workers/timerWorker.ts', import.meta.url),
-        { type: 'module' }
-      );
-      setupWorkerMessageHandler(workerRef.current);
-    }
-
-    // Keep the worker alive
-    return () => {
-      // Don't do anything on cleanup - keep the worker running
-    };
-  }, [setupWorkerMessageHandler]);
-
-  // Initialize timer based on current mode and settings
-  const initializeTimer = useCallback((currentMode: 'work' | 'break', currentSettings: SettingsType) => {
-    const duration = currentMode === 'work' 
-      ? currentSettings.workDuration 
-      : currentSettings.breakDuration;
-    
-    setTimeRemaining(duration * 60);
-    setTotalTime(duration * 60);
-    
-    // Update worker with new time
-    if (workerRef.current) {
-      workerRef.current.postMessage({
-        type: 'UPDATE_TIME',
-        payload: { timeRemaining: duration * 60 }
-      });
-    }
-  }, []);
-
-  // Update settings
-  const updateSettings = useCallback((newSettings: SettingsType) => {
-    console.log('Updating settings:', newSettings);
-    setSettings(newSettings);
-    setTotalIterations(newSettings.iterations);
-    
-    // If we're in break mode, update the break duration
-    if (mode === 'break') {
-      initializeTimer('break', newSettings);
-    }
-    // If we're in work mode, update the work duration
-    else {
-      initializeTimer('work', newSettings);
-    }
-  }, [mode, initializeTimer]);
-
-  // Pause timer
-  const pauseTimer = useCallback(() => {
-    if (!workerRef.current) return;
-
-    // Release wake lock if it exists
-    if (wakeLockRef.current) {
-      wakeLockRef.current.release()
-        .then(() => {
-          wakeLockRef.current = null;
-        })
-        .catch(err => console.log('Error releasing wake lock:', err));
-    }
-
-    workerRef.current.postMessage({ type: 'PAUSE' });
-    setIsRunning(false);
-  }, []);
-
-  // Reset timer
-  const resetTimer = useCallback((resetCurrentOnly = false) => {
-    if (!workerRef.current) return;
-
-    // Release wake lock if it exists
-    if (wakeLockRef.current) {
-      wakeLockRef.current.release()
-        .then(() => {
-          wakeLockRef.current = null;
-        })
-        .catch(err => console.log('Error releasing wake lock:', err));
-    }
-
-    workerRef.current.postMessage({ 
-      type: 'RESET',
-      payload: { resetCurrentOnly }
-    });
-    setIsRunning(false);
-  }, []);
-
-  // Skip timer
-  const skipTimer = useCallback(() => {
-    setIsRunning(false);
-    if (workerRef.current) {
-      workerRef.current.postMessage({ type: 'PAUSE' });
-    }
-    
-    const nextMode = mode === 'work' ? 'break' : 'work';
-    setMode(nextMode);
-    initializeTimer(nextMode, settings);
-  }, [mode, settings, initializeTimer]);
+  }, [isRunning, completeSession]);
 
   // Initialize timer when mode changes
   useEffect(() => {
     initializeTimer(mode, settings);
   }, [mode, settings, initializeTimer]);
-
-  // Start timer
-  const startTimer = useCallback(async () => {
-    if (!workerRef.current) return;
-
-    try {
-      // Request wake lock to prevent device from sleeping
-      if ('wakeLock' in navigator) {
-        try {
-          const wakeLock = await (navigator as any).wakeLock.request('screen');
-          wakeLockRef.current = wakeLock;
-        } catch (err) {
-          console.log('Wake Lock error:', err);
-        }
-      }
-
-      // Resume audio context for sound
-      await resumeAudioContext();
-      
-      // Send current timeRemaining when starting
-      workerRef.current.postMessage({ 
-        type: 'START',
-        payload: { timeRemaining }
-      });
-      setIsRunning(true);
-    } catch (error) {
-      console.error('Error starting timer:', error);
-      toast({
-        title: "Error Starting Timer",
-        description: "Could not start the timer. Please try again.",
-        variant: "destructive",
-      });
-    }
-  }, [toast, timeRemaining]);
 
   return {
     timeRemaining,

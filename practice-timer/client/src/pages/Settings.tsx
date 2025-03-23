@@ -1,5 +1,5 @@
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { apiRequest, queryClient } from "@/lib/queryClient";
+import { apiRequest, queryClient, getQueryFn } from "@/lib/queryClient";
 import { SettingsType, DEFAULT_SETTINGS } from "@/lib/timerService";
 import Settings from "@/components/Settings";
 import { Button } from "@/components/ui/button";
@@ -8,23 +8,26 @@ import { Link } from "wouter";
 export default function SettingsPage() {
   // Fetch user settings from the server
   const { data: settings, isLoading: isLoadingSettings } = useQuery<SettingsType>({
-    queryKey: ['/settings'],
-    staleTime: 0
+    queryKey: ['/api/settings'],
+    queryFn: getQueryFn({ on401: "returnNull" }),
+    staleTime: 0,
+    refetchOnMount: true,
+    refetchOnWindowFocus: true
   });
 
   // Save settings mutation
   const saveSettingsMutation = useMutation({
     mutationFn: (newSettings: SettingsType) => 
-      apiRequest('POST', '/settings', newSettings),
+      apiRequest('POST', '/api/settings', newSettings),
     onMutate: async (newSettings) => {
       // Cancel any outgoing refetches
-      await queryClient.cancelQueries({ queryKey: ['/settings'] });
+      await queryClient.cancelQueries({ queryKey: ['/api/settings'] });
 
       // Snapshot the previous value
-      const previousSettings = queryClient.getQueryData<SettingsType>(['/settings']);
+      const previousSettings = queryClient.getQueryData<SettingsType>(['/api/settings']);
 
       // Optimistically update to the new value
-      queryClient.setQueryData<SettingsType>(['/settings'], newSettings);
+      queryClient.setQueryData<SettingsType>(['/api/settings'], newSettings);
 
       // Return a context object with the snapshotted value
       return { previousSettings };
@@ -32,14 +35,14 @@ export default function SettingsPage() {
     onError: (err, newSettings, context) => {
       // If the mutation fails, use the context returned from onMutate to roll back
       if (context?.previousSettings) {
-        queryClient.setQueryData(['/settings'], context.previousSettings);
+        queryClient.setQueryData(['/api/settings'], context.previousSettings);
       }
     },
     onSettled: () => {
       // Invalidate all queries that might depend on settings
-      queryClient.invalidateQueries({ queryKey: ['/settings'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/settings'] });
       queryClient.invalidateQueries({ queryKey: ['/timer'] });
-      queryClient.refetchQueries({ queryKey: ['/settings'] });
+      queryClient.refetchQueries({ queryKey: ['/api/settings'] });
     }
   });
 

@@ -8,7 +8,7 @@ export const config = {
     workDuration: 25, // minutes
     breakDuration: 5,  // minutes
     iterations: 4,     // number of work-break cycles
-    darkMode: false    // dark mode setting
+    darkMode: true    // dark mode setting
   },
   
   // App configuration

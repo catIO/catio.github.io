@@ -74,7 +74,7 @@ export class MemStorage implements IStorage {
     // Ensure darkMode is included in the response
     return {
       ...settings,
-      darkMode: settings.darkMode ?? false
+      darkMode: settings.darkMode ?? true
     };
   }
 
@@ -91,7 +91,7 @@ export class MemStorage implements IStorage {
       workDuration: insertSettings.workDuration ?? 25,
       breakDuration: insertSettings.breakDuration ?? 5,
       iterations: insertSettings.iterations ?? 4,
-      darkMode: insertSettings.darkMode ?? false
+      darkMode: insertSettings.darkMode ?? true
     };
     console.log('Storage - Creating new settings:', settings);
     // Store settings using userId as the key
@@ -122,7 +122,7 @@ export class MemStorage implements IStorage {
       workDuration: settings.workDuration ?? existingSettings.workDuration,
       breakDuration: settings.breakDuration ?? existingSettings.breakDuration,
       iterations: settings.iterations ?? existingSettings.iterations,
-      darkMode: settings.darkMode ?? existingSettings.darkMode ?? false
+      darkMode: settings.darkMode ?? existingSettings.darkMode ?? true
     };
 
     console.log('Storage - Final merged settings:', updatedSettings);
