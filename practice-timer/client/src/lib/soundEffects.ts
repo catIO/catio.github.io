@@ -6,80 +6,99 @@ type SoundEffect = 'start' | 'end' | 'reset' | 'skip';
 // Volume control (0.0 to 1.0)
 let masterVolume = 0.5;
 
-// Create audio elements for each sound
-const createAudioElement = (frequency: number, duration: number): HTMLAudioElement => {
-  const audio = new Audio();
-  audio.src = `data:audio/wav;base64,${generateWavBase64(frequency, duration)}`;
-  audio.volume = masterVolume;
-  return audio;
-};
+// Create Web Audio API context
+let audioContext: AudioContext | null = null;
+let isInitialized = false;
+let hasUserInteracted = false;
 
-// Generate WAV file as base64
-const generateWavBase64 = (frequency: number, duration: number): string => {
-  const sampleRate = 44100;
-  const numSamples = Math.floor(sampleRate * duration);
-  const buffer = new ArrayBuffer(44 + numSamples * 2);
-  const view = new DataView(buffer);
-  
-  // WAV header
-  writeString(view, 0, 'RIFF');
-  view.setUint32(4, 36 + numSamples * 2, true);
-  writeString(view, 8, 'WAVE');
-  writeString(view, 12, 'fmt ');
-  view.setUint32(16, 16, true);
-  view.setUint16(20, 1, true);
-  view.setUint16(22, 1, true);
-  view.setUint32(24, sampleRate, true);
-  view.setUint32(28, sampleRate * 2, true);
-  view.setUint16(32, 2, true);
-  view.setUint16(34, 16, true);
-  writeString(view, 36, 'data');
-  view.setUint32(40, numSamples * 2, true);
-  
-  // Generate sine wave
-  for (let i = 0; i < numSamples; i++) {
-    const t = i / sampleRate;
-    const amplitude = Math.exp(-2 * t); // Exponential decay
-    const value = amplitude * Math.sin(2 * Math.PI * frequency * t);
-    view.setInt16(44 + i * 2, value * 32767, true);
-  }
-  
-  // Convert buffer to base64
-  const bytes = new Uint8Array(buffer);
-  let binary = '';
-  for (let i = 0; i < bytes.length; i++) {
-    binary += String.fromCharCode(bytes[i]);
-  }
-  return btoa(binary);
-};
-
-const writeString = (view: DataView, offset: number, string: string): void => {
-  for (let i = 0; i < string.length; i++) {
-    view.setUint8(offset + i, string.charCodeAt(i));
+// Initialize audio context
+const initializeAudioContext = async () => {
+  if (!isInitialized && hasUserInteracted) {
+    try {
+      audioContext = new AudioContext();
+      // Create and connect a silent buffer to keep the context alive
+      const buffer = audioContext.createBuffer(1, 1, 22050);
+      const source = audioContext.createBufferSource();
+      source.buffer = buffer;
+      source.connect(audioContext.destination);
+      source.start(0);
+      isInitialized = true;
+      console.log('Audio context initialized');
+    } catch (error) {
+      console.error('Error initializing audio context:', error);
+      throw error;
+    }
   }
 };
 
-// Sound effect cache
-const audioElements: Record<SoundEffect, HTMLAudioElement> = {
-  start: createAudioElement(440, 0.8),
-  end: createAudioElement(880, 1.2),
-  reset: createAudioElement(600, 0.4),
-  skip: createAudioElement(500, 0.3)
+// Mark that user has interacted with the page
+export const markUserInteraction = () => {
+  if (!hasUserInteracted) {
+    hasUserInteracted = true;
+    console.log('User interaction detected, audio will be enabled');
+    // Try to initialize audio context after user interaction
+    initializeAudioContext().catch(console.error);
+  }
+};
+
+// Create oscillator and gain nodes for sound generation
+const createOscillator = (frequency: number, duration: number, startTime: number): OscillatorNode => {
+  if (!audioContext) throw new Error('Audio context not initialized');
+  
+  const oscillator = audioContext.createOscillator();
+  const gainNode = audioContext.createGain();
+  
+  oscillator.type = 'sine';
+  oscillator.frequency.setValueAtTime(frequency, startTime);
+  
+  // Exponential decay
+  gainNode.gain.setValueAtTime(masterVolume, startTime);
+  gainNode.gain.exponentialRampToValueAtTime(0.01, startTime + duration);
+  
+  oscillator.connect(gainNode);
+  gainNode.connect(audioContext.destination);
+  
+  return oscillator;
+};
+
+// Sound effect frequencies and durations
+const soundEffects: Record<SoundEffect, { frequency: number; duration: number }> = {
+  start: { frequency: 440, duration: 0.8 },
+  end: { frequency: 880, duration: 1.2 },
+  reset: { frequency: 600, duration: 0.4 },
+  skip: { frequency: 500, duration: 0.3 }
 };
 
 // Play a sound effect
-export const playSound = async (effect: SoundEffect): Promise<void> => {
+export const playSound = async (effect: SoundEffect = 'end', times: number = 5): Promise<void> => {
   try {
-    console.log(`Attempting to play ${effect} sound...`);
-    const audio = audioElements[effect];
+    if (!hasUserInteracted) {
+      console.log('Waiting for user interaction before playing sound...');
+      return;
+    }
+
+    console.log(`Attempting to play ${effect} sound ${times} times...`);
     
-    // Reset the audio element
-    audio.currentTime = 0;
-    audio.volume = masterVolume;
+    // Ensure audio context is initialized
+    await initializeAudioContext();
     
-    // Play the sound
-    await audio.play();
-    console.log(`Started playing ${effect} sound at volume ${masterVolume}`);
+    // Resume audio context if suspended
+    if (audioContext!.state === 'suspended') {
+      await audioContext!.resume();
+    }
+    
+    const { frequency, duration } = soundEffects[effect];
+    const startTime = audioContext!.currentTime;
+    const gapBetweenBeeps = 0.1; // 100ms gap between beeps
+    
+    // Play the sound multiple times
+    for (let i = 0; i < times; i++) {
+      const beepStartTime = startTime + (i * (duration + gapBetweenBeeps));
+      const oscillator = createOscillator(frequency, duration, beepStartTime);
+      oscillator.start(beepStartTime);
+      oscillator.stop(beepStartTime + duration);
+      console.log(`Started playing ${effect} sound ${i + 1}/${times} at time ${beepStartTime}`);
+    }
   } catch (error) {
     console.error(`Error playing ${effect} sound:`, error);
     throw error;
@@ -90,15 +109,23 @@ export const playSound = async (effect: SoundEffect): Promise<void> => {
 export const setVolume = (volume: number): void => {
   masterVolume = Math.max(0, Math.min(1, volume));
   console.log(`Master volume set to ${masterVolume}`);
-  
-  // Update volume for all audio elements
-  Object.values(audioElements).forEach(audio => {
-    audio.volume = masterVolume;
-  });
 };
 
-// Resume audio context (compatibility function)
+// Resume audio context
 export const resumeAudioContext = async (): Promise<void> => {
-  // No-op for HTML5 Audio
-  return Promise.resolve();
+  try {
+    if (!hasUserInteracted) {
+      console.log('Waiting for user interaction before initializing audio...');
+      return;
+    }
+
+    await initializeAudioContext();
+    
+    if (audioContext!.state === 'suspended') {
+      await audioContext!.resume();
+    }
+  } catch (error) {
+    console.error('Error resuming audio context:', error);
+    throw error;
+  }
 };

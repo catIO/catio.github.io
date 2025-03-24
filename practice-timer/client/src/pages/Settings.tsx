@@ -8,7 +8,7 @@ import { Link } from "wouter";
 export default function SettingsPage() {
   // Fetch user settings from the server
   const { data: settings, isLoading: isLoadingSettings } = useQuery<SettingsType>({
-    queryKey: ['/api/settings'],
+    queryKey: ['/settings'],
     queryFn: getQueryFn({ on401: "returnNull" }),
     staleTime: 0,
     refetchOnMount: true,
@@ -18,16 +18,16 @@ export default function SettingsPage() {
   // Save settings mutation
   const saveSettingsMutation = useMutation({
     mutationFn: (newSettings: SettingsType) => 
-      apiRequest('POST', '/api/settings', newSettings),
+      apiRequest('POST', '/settings', newSettings),
     onMutate: async (newSettings) => {
       // Cancel any outgoing refetches
-      await queryClient.cancelQueries({ queryKey: ['/api/settings'] });
+      await queryClient.cancelQueries({ queryKey: ['/settings'] });
 
       // Snapshot the previous value
-      const previousSettings = queryClient.getQueryData<SettingsType>(['/api/settings']);
+      const previousSettings = queryClient.getQueryData<SettingsType>(['/settings']);
 
       // Optimistically update to the new value
-      queryClient.setQueryData<SettingsType>(['/api/settings'], newSettings);
+      queryClient.setQueryData<SettingsType>(['/settings'], newSettings);
 
       // Return a context object with the snapshotted value
       return { previousSettings };
@@ -35,14 +35,14 @@ export default function SettingsPage() {
     onError: (err, newSettings, context) => {
       // If the mutation fails, use the context returned from onMutate to roll back
       if (context?.previousSettings) {
-        queryClient.setQueryData(['/api/settings'], context.previousSettings);
+        queryClient.setQueryData(['/settings'], context.previousSettings);
       }
     },
     onSettled: () => {
       // Invalidate all queries that might depend on settings
-      queryClient.invalidateQueries({ queryKey: ['/api/settings'] });
+      queryClient.invalidateQueries({ queryKey: ['/settings'] });
       queryClient.invalidateQueries({ queryKey: ['/timer'] });
-      queryClient.refetchQueries({ queryKey: ['/api/settings'] });
+      queryClient.refetchQueries({ queryKey: ['/settings'] });
     }
   });
 

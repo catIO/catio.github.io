@@ -14,18 +14,12 @@ import { API_BASE_URL } from '@/lib/queryClient';
 
 function App() {
   // Fetch user settings from the server with staleTime: 0 to ensure fresh data
-  const { data: settings, isLoading: isLoadingSettings } = useQuery({
-    queryKey: ['/api/settings'],
-    queryFn: async () => {
-      const response = await fetch(`${API_BASE_URL}/settings`);
-      if (!response.ok) throw new Error('Failed to fetch settings');
-      return response.json();
-    },
-    staleTime: 0,
-    select: (data) => ({
-      ...data,
-      darkMode: data.darkMode ?? true // Default to dark mode if not set
-    })
+  const { data: settings, isLoading: isLoadingSettings } = useQuery<SettingsType>({
+    queryKey: ['/settings'],
+    queryFn: getQueryFn({ on401: "returnNull" }),
+    staleTime: 5 * 60 * 1000, // 5 minutes
+    refetchOnMount: true,
+    refetchOnWindowFocus: false
   });
 
   // Get the current settings with fallback to defaults
@@ -46,11 +40,14 @@ function App() {
 
   // Subscribe to settings changes
   useEffect(() => {
+    let previousSettings: SettingsType | null = null;
+    
     const unsubscribe = queryClient.getQueryCache().subscribe(() => {
       // Force a re-render when any query updates
-      const newSettings = queryClient.getQueryData<SettingsType>(['/api/settings']);
-      if (newSettings) {
+      const newSettings = queryClient.getQueryData<SettingsType>(['/settings']);
+      if (newSettings && JSON.stringify(newSettings) !== JSON.stringify(previousSettings)) {
         console.log('App - Settings cache updated:', newSettings);
+        previousSettings = newSettings;
       }
     });
 

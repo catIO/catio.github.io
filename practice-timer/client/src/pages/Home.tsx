@@ -10,13 +10,13 @@ import { useToast } from "@/hooks/use-toast";
 import { SettingsType, DEFAULT_SETTINGS } from "@/lib/timerService";
 import { Button } from "@/components/ui/button";
 import { Link } from "wouter";
-import { resumeAudioContext } from "@/lib/soundEffects";
+import { resumeAudioContext, markUserInteraction } from "@/lib/soundEffects";
 import { getQueryFn } from "@/lib/queryClient";
 
 export default function Home() {
   // Fetch user settings from the server
   const { data: settings, isLoading: isLoadingSettings } = useQuery<SettingsType>({
-    queryKey: ['/api/settings'],
+    queryKey: ['/settings'],
     queryFn: getQueryFn({ on401: "returnNull" }),
     staleTime: 0,
     refetchOnMount: true,
@@ -28,7 +28,7 @@ export default function Home() {
     mutationFn: (newSettings: SettingsType) => 
       apiRequest('POST', '/api/settings', newSettings),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/settings'] });
+      queryClient.invalidateQueries({ queryKey: ['/settings'] });
     }
   });
 
@@ -65,17 +65,14 @@ export default function Home() {
           });
         }
       }
-      if (currentSettings.vibrationEnabled) {
-        vibrate();
-      }
     }
   });
 
   // Setup notifications and toast
-  const { playSound, vibrate, requestNotificationPermission } = useNotification();
+  const { playSound, requestNotificationPermission } = useNotification();
   const { toast } = useToast();
 
-  // Initialize notifications on mount
+  // Initialize notifications and audio on mount
   useEffect(() => {
     const initNotifications = async () => {
       try {
@@ -89,6 +86,24 @@ export default function Home() {
 
     initNotifications();
   }, [requestNotificationPermission]);
+
+  // Handle user interaction for audio
+  useEffect(() => {
+    const handleInteraction = () => {
+      markUserInteraction();
+      // Remove listeners after first interaction
+      document.removeEventListener('click', handleInteraction);
+      document.removeEventListener('touchstart', handleInteraction);
+    };
+
+    document.addEventListener('click', handleInteraction);
+    document.addEventListener('touchstart', handleInteraction);
+
+    return () => {
+      document.removeEventListener('click', handleInteraction);
+      document.removeEventListener('touchstart', handleInteraction);
+    };
+  }, []);
 
   // Update timer settings when server data is loaded or settings change
   useEffect(() => {

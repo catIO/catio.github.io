@@ -20,6 +20,7 @@ export function useTimer({ initialSettings, onComplete }: UseTimerProps) {
   const [totalIterations, setTotalIterations] = useState(initialSettings.iterations || 4);
   
   const timerRef = useRef<number | null>(null);
+  const startTimeRef = useRef<number | null>(null);
   const { showNotification } = useNotification();
   const { toast } = useToast();
 
@@ -46,6 +47,7 @@ export function useTimer({ initialSettings, onComplete }: UseTimerProps) {
       try {
         // Resume audio context for sound
         await resumeAudioContext();
+        startTimeRef.current = Date.now();
         setIsRunning(true);
       } catch (error) {
         console.error('Error starting timer:', error);
@@ -74,6 +76,7 @@ export function useTimer({ initialSettings, onComplete }: UseTimerProps) {
     }
     
     setIsRunning(false);
+    startTimeRef.current = null;
     
     if (currentTimerOnly) {
       // Only reset the current timer duration
@@ -96,6 +99,7 @@ export function useTimer({ initialSettings, onComplete }: UseTimerProps) {
     }
     
     setIsRunning(false);
+    startTimeRef.current = null;
     const nextMode = mode === 'work' ? 'break' : 'work';
     
     // If we're switching from break to work, increment iteration
@@ -113,6 +117,28 @@ export function useTimer({ initialSettings, onComplete }: UseTimerProps) {
     setMode(nextMode);
     initializeTimer(nextMode, settings);
   }, [mode, settings, initializeTimer, totalIterations]);
+
+  // Save session to server with retry logic
+  const saveSession = useCallback(async (sessionData: any) => {
+    try {
+      // Store in localStorage first as backup
+      const pendingSessions = JSON.parse(localStorage.getItem('pendingSessions') || '[]');
+      pendingSessions.push(sessionData);
+      localStorage.setItem('pendingSessions', JSON.stringify(pendingSessions));
+
+      // Try to save to server
+      await apiRequest('POST', '/api/sessions', sessionData);
+      
+      // If successful, remove from pending sessions
+      const updatedPendingSessions = pendingSessions.filter(
+        (session: any) => session.startTime !== sessionData.startTime
+      );
+      localStorage.setItem('pendingSessions', JSON.stringify(updatedPendingSessions));
+    } catch (error) {
+      console.error('Error saving session:', error);
+      // Session is already saved in localStorage, so we can safely ignore the error
+    }
+  }, []);
 
   // Complete current session and start next one
   const completeSession = useCallback(async () => {
@@ -160,19 +186,22 @@ export function useTimer({ initialSettings, onComplete }: UseTimerProps) {
     setCurrentIteration(nextIteration);
     initializeTimer(nextMode, settings);
 
-    // Save session to server
+    // Save session to server without blocking
     try {
-      await apiRequest('POST', '/api/sessions', {
+      const sessionData = {
         type: mode,
         startTime: new Date(Date.now() - (mode === 'work' ? settings.workDuration : settings.breakDuration) * 60 * 1000).toISOString(),
         endTime: new Date().toISOString(),
         duration: mode === 'work' ? settings.workDuration : settings.breakDuration,
         completed: true
-      });
+      };
+      
+      // Fire and forget the session save
+      saveSession(sessionData);
     } catch (error) {
-      console.error('Error saving session:', error);
+      console.error('Error preparing session data:', error);
     }
-  }, [mode, settings, onComplete, initializeTimer, currentIteration, totalIterations, showNotification]);
+  }, [mode, settings, onComplete, initializeTimer, currentIteration, totalIterations, showNotification, saveSession]);
 
   // Timer logic
   useEffect(() => {
@@ -182,19 +211,23 @@ export function useTimer({ initialSettings, onComplete }: UseTimerProps) {
       timerRef.current = null;
     }
 
-    if (isRunning) {
+    if (isRunning && startTimeRef.current) {
+      const startTime = startTimeRef.current;
+      const endTime = startTime + (totalTime * 1000);
+
       timerRef.current = window.setInterval(() => {
-        setTimeRemaining((prevTime) => {
-          if (prevTime <= 1) {
-            // Timer complete
-            clearInterval(timerRef.current!);
-            timerRef.current = null;
-            setIsRunning(false);
-            completeSession();
-            return 0;
-          }
-          return prevTime - 1;
-        });
+        const now = Date.now();
+        const remaining = Math.max(0, Math.ceil((endTime - now) / 1000));
+
+        setTimeRemaining(remaining);
+
+        if (remaining <= 0) {
+          // Timer complete
+          clearInterval(timerRef.current!);
+          timerRef.current = null;
+          setIsRunning(false);
+          completeSession();
+        }
       }, 1000);
     }
 
@@ -205,7 +238,7 @@ export function useTimer({ initialSettings, onComplete }: UseTimerProps) {
         timerRef.current = null;
       }
     };
-  }, [isRunning, completeSession]);
+  }, [isRunning, completeSession, totalTime]);
 
   // Initialize timer when mode changes
   useEffect(() => {
