@@ -11,6 +11,7 @@ interface UseTimerProps {
 }
 
 export function useTimer({ initialSettings, onComplete }: UseTimerProps) {
+  // All state hooks at the top
   const [settings, setSettings] = useState<SettingsType>(initialSettings);
   const [mode, setMode] = useState<'work' | 'break'>('work');
   const [timeRemaining, setTimeRemaining] = useState(initialSettings.workDuration * 60);
@@ -19,9 +20,13 @@ export function useTimer({ initialSettings, onComplete }: UseTimerProps) {
   const [currentIteration, setCurrentIteration] = useState(1);
   const [totalIterations, setTotalIterations] = useState(initialSettings.iterations || 4);
   
+  // All refs at the top
   const timerRef = useRef<number | null>(null);
   const startTimeRef = useRef<number | null>(null);
-  const { showNotification } = useNotification();
+  const lastUpdateRef = useRef<number | null>(null);
+  
+  // All custom hooks at the top
+  const { showNotification, playSound } = useNotification();
   const { toast } = useToast();
 
   // Initialize timer based on current mode and settings
@@ -33,90 +38,6 @@ export function useTimer({ initialSettings, onComplete }: UseTimerProps) {
     setTimeRemaining(duration * 60);
     setTotalTime(duration * 60);
   }, []);
-
-  // Update settings
-  const updateSettings = useCallback((newSettings: SettingsType) => {
-    setSettings(newSettings);
-    setTotalIterations(newSettings.iterations);
-    initializeTimer(mode, newSettings);
-  }, [mode, initializeTimer]);
-
-  // Start timer
-  const startTimer = useCallback(async () => {
-    if (!isRunning) {
-      try {
-        // Resume audio context for sound
-        await resumeAudioContext();
-        startTimeRef.current = Date.now();
-        setIsRunning(true);
-      } catch (error) {
-        console.error('Error starting timer:', error);
-        toast({
-          title: "Error Starting Timer",
-          description: "Could not start the timer. Please try again.",
-          variant: "destructive",
-        });
-      }
-    }
-  }, [isRunning, toast]);
-
-  // Pause timer
-  const pauseTimer = useCallback(() => {
-    if (isRunning) {
-      setIsRunning(false);
-    }
-  }, [isRunning]);
-
-  // Reset timer
-  const resetTimer = useCallback((currentTimerOnly = false) => {
-    // Clear any existing interval
-    if (timerRef.current) {
-      clearInterval(timerRef.current);
-      timerRef.current = null;
-    }
-    
-    setIsRunning(false);
-    startTimeRef.current = null;
-    
-    if (currentTimerOnly) {
-      // Only reset the current timer duration
-      initializeTimer(mode, settings);
-    } else {
-      // Reset to work mode and first iteration
-      setMode('work');
-      setCurrentIteration(1);
-      // Initialize timer for work mode
-      initializeTimer('work', settings);
-    }
-  }, [settings, mode, initializeTimer]);
-
-  // Skip timer
-  const skipTimer = useCallback(() => {
-    // Clear any existing interval
-    if (timerRef.current) {
-      clearInterval(timerRef.current);
-      timerRef.current = null;
-    }
-    
-    setIsRunning(false);
-    startTimeRef.current = null;
-    const nextMode = mode === 'work' ? 'break' : 'work';
-    
-    // If we're switching from break to work, increment iteration
-    if (mode === 'break') {
-      setCurrentIteration(prev => {
-        const next = prev + 1;
-        if (next > totalIterations) {
-          // Reset to first iteration if we've completed all iterations
-          return 1;
-        }
-        return next;
-      });
-    }
-    
-    setMode(nextMode);
-    initializeTimer(nextMode, settings);
-  }, [mode, settings, initializeTimer, totalIterations]);
 
   // Save session to server with retry logic
   const saveSession = useCallback(async (sessionData: any) => {
@@ -142,10 +63,18 @@ export function useTimer({ initialSettings, onComplete }: UseTimerProps) {
 
   // Complete current session and start next one
   const completeSession = useCallback(async () => {
-    // Clear any existing interval
     if (timerRef.current) {
       clearInterval(timerRef.current);
       timerRef.current = null;
+    }
+    
+    // Ensure audio context is resumed for sound
+    try {
+      await resumeAudioContext();
+      // Play the sound effect
+      await playSound();
+    } catch (error) {
+      console.error('Error playing sound:', error);
     }
     
     if (onComplete) {
@@ -182,6 +111,8 @@ export function useTimer({ initialSettings, onComplete }: UseTimerProps) {
       }
     }
     
+    // Update state in the correct order
+    setIsRunning(false);
     setMode(nextMode);
     setCurrentIteration(nextIteration);
     initializeTimer(nextMode, settings);
@@ -201,44 +132,150 @@ export function useTimer({ initialSettings, onComplete }: UseTimerProps) {
     } catch (error) {
       console.error('Error preparing session data:', error);
     }
-  }, [mode, settings, onComplete, initializeTimer, currentIteration, totalIterations, showNotification, saveSession]);
+  }, [mode, settings, onComplete, initializeTimer, currentIteration, totalIterations, showNotification, saveSession, playSound]);
+
+  // Update settings
+  const updateSettings = useCallback((newSettings: SettingsType) => {
+    setSettings(newSettings);
+    setTotalIterations(newSettings.iterations);
+    initializeTimer(mode, newSettings);
+  }, [mode, initializeTimer]);
 
   // Timer logic
   useEffect(() => {
-    // Clear any existing interval when running state changes
-    if (timerRef.current) {
-      clearInterval(timerRef.current);
-      timerRef.current = null;
-    }
+    let timerId: number | null = null;
+    let backgroundTimerId: number | null = null;
+    let lastCheckTime = Date.now();
 
-    if (isRunning && startTimeRef.current) {
+    const updateTimer = () => {
+      if (!isRunning || !startTimeRef.current) return;
+
       const startTime = startTimeRef.current;
       const endTime = startTime + (totalTime * 1000);
-
-      timerRef.current = window.setInterval(() => {
-        const now = Date.now();
+      const now = Date.now();
+      
+      // If we've missed more than 5 seconds of updates, adjust the start time
+      if (now - lastCheckTime > 5000) {
+        console.log('Timer update delayed, adjusting start time');
+        startTimeRef.current = now - (totalTime * 1000 - timeRemaining * 1000);
+      }
+      
+      if (now >= endTime) {
+        setIsRunning(false);
+        completeSession();
+      } else {
         const remaining = Math.max(0, Math.ceil((endTime - now) / 1000));
-
         setTimeRemaining(remaining);
+      }
+      
+      lastCheckTime = now;
+    };
 
-        if (remaining <= 0) {
-          // Timer complete
-          clearInterval(timerRef.current!);
-          timerRef.current = null;
-          setIsRunning(false);
-          completeSession();
+    if (isRunning && startTimeRef.current) {
+      // Update immediately
+      updateTimer();
+      
+      // Set up interval for updates
+      timerId = window.setInterval(updateTimer, 1000);
+      
+      // Set up a background timer that runs less frequently but is more reliable
+      backgroundTimerId = window.setInterval(() => {
+        if (isRunning && startTimeRef.current) {
+          const startTime = startTimeRef.current;
+          const endTime = startTime + (totalTime * 1000);
+          const now = Date.now();
+          
+          // If we've missed more than 5 seconds of updates, adjust the start time
+          if (now - lastCheckTime > 5000) {
+            console.log('Background timer update delayed, adjusting start time');
+            startTimeRef.current = now - (totalTime * 1000 - timeRemaining * 1000);
+          }
+          
+          if (now >= endTime) {
+            setIsRunning(false);
+            completeSession();
+          }
+          
+          lastCheckTime = now;
         }
-      }, 1000);
+      }, 5000); // Check every 5 seconds
     }
 
     // Cleanup function
     return () => {
-      if (timerRef.current) {
-        clearInterval(timerRef.current);
-        timerRef.current = null;
+      if (timerId !== null) {
+        clearInterval(timerId);
+      }
+      if (backgroundTimerId !== null) {
+        clearInterval(backgroundTimerId);
       }
     };
-  }, [isRunning, completeSession, totalTime]);
+  }, [isRunning, totalTime, completeSession, timeRemaining]);
+
+  // Start timer
+  const startTimer = useCallback(async () => {
+    if (!isRunning) {
+      try {
+        // Resume audio context for sound
+        await resumeAudioContext();
+        startTimeRef.current = Date.now();
+        setIsRunning(true);
+      } catch (error) {
+        console.error('Error starting timer:', error);
+        toast({
+          title: "Error Starting Timer",
+          description: "Could not start the timer. Please try again.",
+          variant: "destructive",
+        });
+      }
+    }
+  }, [isRunning, toast]);
+
+  // Pause timer
+  const pauseTimer = useCallback(() => {
+    if (isRunning) {
+      setIsRunning(false);
+    }
+  }, [isRunning]);
+
+  // Reset timer
+  const resetTimer = useCallback((currentTimerOnly = false) => {
+    setIsRunning(false);
+    startTimeRef.current = null;
+    
+    if (currentTimerOnly) {
+      // Only reset the current timer duration
+      initializeTimer(mode, settings);
+    } else {
+      // Reset to work mode and first iteration
+      setMode('work');
+      setCurrentIteration(1);
+      // Initialize timer for work mode
+      initializeTimer('work', settings);
+    }
+  }, [settings, mode, initializeTimer]);
+
+  // Skip timer
+  const skipTimer = useCallback(() => {
+    setIsRunning(false);
+    startTimeRef.current = null;
+    const nextMode = mode === 'work' ? 'break' : 'work';
+    
+    // If we're switching from break to work, increment iteration
+    if (mode === 'break') {
+      setCurrentIteration(prev => {
+        const next = prev + 1;
+        if (next > totalIterations) {
+          // Reset to first iteration if we've completed all iterations
+          return 1;
+        }
+        return next;
+      });
+    }
+    
+    setMode(nextMode);
+    initializeTimer(nextMode, settings);
+  }, [mode, settings, initializeTimer, totalIterations]);
 
   // Initialize timer when mode changes
   useEffect(() => {
