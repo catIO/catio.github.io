@@ -1,11 +1,12 @@
 [build]
   base = "."
-  command = "pwd && ls -la && cd metronome && pwd && ls -la && npm install --verbose && npm run build --verbose"
+  command = "cd metronome && npm ci && npm run build"
   publish = "metronome/dist"
 
 [build.environment]
   NODE_VERSION = "20"
-  DEBUG = "*"
+  NPM_VERSION = "10"
+  NODE_ENV = "production"
 
 [[redirects]]
   from = "/*"
