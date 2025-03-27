@@ -2,11 +2,28 @@
   base = "."
   command = "cd metronome && npm ci && npm run build"
   publish = "metronome/dist"
+  ignore = "git diff --quiet $CACHED_COMMIT_REF $COMMIT_REF . ../metronome/"
 
 [build.environment]
   NODE_VERSION = "20"
   NPM_VERSION = "10"
   NODE_ENV = "production"
+  NPM_FLAGS = "--no-audit --no-fund"
+  VITE_CJS_IGNORE_WARNING = "true"
+
+[build.processing]
+  skip_processing = false
+
+[build.processing.html]
+  pretty_urls = true
+
+[build.processing.css]
+  bundle = true
+  minify = true
+
+[build.processing.js]
+  bundle = true
+  minify = true
 
 [[redirects]]
   from = "/*"
