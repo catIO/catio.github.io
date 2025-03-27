@@ -1,0 +1,8 @@
+[build]
+  command = "cd metronome && npm install && npm run build"
+  publish = "metronome/dist"
+
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200 
