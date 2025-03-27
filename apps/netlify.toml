@@ -1,6 +1,6 @@
 [build]
   base = "."
-  command = "cd metronome && npm install && npm run build"
+  command = "pwd && ls -la && cd metronome && pwd && ls -la && npm install --verbose && npm run build"
   publish = "metronome/dist"
 
 [build.environment]
