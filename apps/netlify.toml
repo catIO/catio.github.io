@@ -2,6 +2,9 @@
   command = "cd metronome && npm install && npm run build"
   publish = "metronome/dist"
 
+[build.environment]
+  NODE_VERSION = "20"
+
 [[redirects]]
   from = "/*"
   to = "/index.html"
