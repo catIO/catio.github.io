@@ -1,8 +1,8 @@
 [build]
-  base = "."
-  command = "cd metronome && npm ci && npm run build"
-  publish = "metronome/dist"
-  ignore = "git diff --quiet $CACHED_COMMIT_REF $COMMIT_REF . ../metronome/"
+  base = "metronome"
+  command = "npm ci && npm run build"
+  publish = "dist"
+  ignore = "git diff --quiet $CACHED_COMMIT_REF $COMMIT_REF ."
 
 [build.environment]
   NODE_VERSION = "20"
