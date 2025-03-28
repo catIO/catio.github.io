@@ -1,4 +1,3 @@
 [build]
-base = "apps/metronome"
 command = "npm ci && npm run build"
-publish = "dist"
+publish = "dist" 
