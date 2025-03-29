@@ -1,5 +1,5 @@
 [build]
-command = "npm install && cd client && npm install && npm run build"
+command = "ls -la && echo 'Current directory contents:' && pwd && echo 'Current directory:' && npm install && echo 'Root dependencies installed' && cd client && echo 'Changed to client directory' && npm install && echo 'Client dependencies installed' && npm run build && echo 'Build completed'"
 publish = "client/dist"
 
 [[redirects]]
