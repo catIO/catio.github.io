@@ -3,6 +3,10 @@
   command = "cd client && npm install && npm run build"
   publish = "client/dist"
 
+[build.environment]
+  NODE_VERSION = "20"
+  NPM_VERSION = "10"
+
 [[redirects]]
   from = "/*"
   to = "/index.html"
