@@ -40,12 +40,11 @@ function App() {
     }
   }, [settings, setSettings]);
 
-  // Initialize dark mode from settings
+  // Initialize dark mode from settings or defaults
   useEffect(() => {
-    if (settings) {
-      setIsDark(settings.darkMode);
-      document.documentElement.classList.toggle('dark', settings.darkMode);
-    }
+    const darkMode = settings?.darkMode ?? DEFAULT_SETTINGS.darkMode;
+    setIsDark(darkMode);
+    document.documentElement.classList.toggle('dark', darkMode);
   }, [settings?.darkMode, setIsDark]);
 
   // Subscribe to settings changes

@@ -2,11 +2,8 @@ import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import path from "path";
 
-// Get the repository name from package.json or use a default
-const base = process.env.NODE_ENV === 'production' ? '/practice-timer/' : '/';
-
 export default defineConfig({
-  base,
+  base: '/',
   plugins: [react()],
   resolve: {
     alias: {
@@ -19,6 +16,7 @@ export default defineConfig({
     outDir: "dist",
     emptyOutDir: true,
     sourcemap: true,
+    assetsDir: 'assets',
   },
   server: {
     port: 5173,
