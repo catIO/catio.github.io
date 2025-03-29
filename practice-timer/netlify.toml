@@ -1,8 +1,9 @@
 [build]
-command = "ls -la && echo 'Current directory contents:' && pwd && echo 'Current directory:' && npm install && echo 'Root dependencies installed' && cd client && echo 'Changed to client directory' && npm install && echo 'Client dependencies installed' && npm run build && echo 'Build completed'"
-publish = "client/dist"
+  base = "."
+  command = "cd client && npm install && npm run build"
+  publish = "client/dist"
 
 [[redirects]]
-from = "/*"
-to = "/index.html"
-status = 200
+  from = "/*"
+  to = "/index.html"
+  status = 200
