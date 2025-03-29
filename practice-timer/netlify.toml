@@ -1,7 +1,6 @@
 [build]
 command = "npm install && cd client && npm install && npm run build"
 publish = "client/dist"
-base = "practice-timer"
 
 [[redirects]]
 from = "/*"
