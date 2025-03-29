@@ -7,6 +7,7 @@ interface Settings {
   breakDuration: number;
   iterations: number;
   darkMode: boolean;
+  numberOfBeeps: number;
   id?: number;
 }
 
@@ -26,7 +27,8 @@ const DEFAULT_SETTINGS: Settings = {
   workDuration: 25,
   breakDuration: 5,
   iterations: 4,
-  darkMode: false
+  darkMode: false,
+  numberOfBeeps: 3
 };
 
 class LocalStorage {
