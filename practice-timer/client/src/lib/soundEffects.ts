@@ -80,6 +80,15 @@ export const playSound = async (effect: SoundEffect): Promise<void> => {
     // Play the sound
     await audio.play();
     console.log(`Started playing ${effect} sound at volume ${masterVolume}`);
+
+    // For end sound, play multiple beeps
+    if (effect === 'end') {
+      // Wait a bit before playing the next beep
+      await new Promise(resolve => setTimeout(resolve, 300));
+      await audio.play();
+      await new Promise(resolve => setTimeout(resolve, 300));
+      await audio.play();
+    }
   } catch (error) {
     console.error(`Error playing ${effect} sound:`, error);
     throw error;
