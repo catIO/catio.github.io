@@ -1,5 +1,5 @@
 [build]
-command = "npm install && cd client && npm install && npm run build"
+command = "cd /opt/build/repo && npm install && cd client && npm install && npm run build"
 publish = "client/dist"
 
 [[redirects]]
