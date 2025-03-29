@@ -14,7 +14,8 @@ export default function SettingsPage() {
       if (!response.ok) throw new Error('Failed to fetch settings');
       return response.json();
     },
-    staleTime: 0
+    staleTime: 1000 * 60 * 5, // Consider data fresh for 5 minutes
+    refetchOnWindowFocus: false // Don't refetch when window regains focus
   });
 
   // Save settings mutation
@@ -40,11 +41,15 @@ export default function SettingsPage() {
         queryClient.setQueryData(['/api/settings'], context.previousSettings);
       }
     },
-    onSettled: () => {
-      // Invalidate all queries that might depend on settings
-      queryClient.invalidateQueries({ queryKey: ['/api/settings'] });
+    onSuccess: (data) => {
+      // Update the cache with the server response
+      queryClient.setQueryData(['/api/settings'], data);
+      // Invalidate timer query to ensure it picks up new settings
       queryClient.invalidateQueries({ queryKey: ['/timer'] });
-      queryClient.refetchQueries({ queryKey: ['/api/settings'] });
+    },
+    onSettled: () => {
+      // Only refetch if there's an error
+      queryClient.invalidateQueries({ queryKey: ['/api/settings'] });
     }
   });
 

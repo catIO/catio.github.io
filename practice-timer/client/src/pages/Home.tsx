@@ -53,7 +53,9 @@ export default function Home() {
     onComplete: async () => {
       // Trigger notification and sound
       if (settings?.soundEnabled) {
-        playSound();
+        console.log('Timer completed, current settings:', settings);
+        console.log('Number of beeps setting:', settings.numberOfBeeps);
+        playSound(settings);
       }
       if (settings?.browserNotificationsEnabled) {
         showNotification('Timer Complete!', {

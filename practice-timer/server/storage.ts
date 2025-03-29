@@ -37,7 +37,8 @@ class Storage {
       workDuration: insertSettings.workDuration ?? 25,
       breakDuration: insertSettings.breakDuration ?? 5,
       iterations: insertSettings.iterations ?? 4,
-      darkMode: insertSettings.darkMode ?? true
+      darkMode: insertSettings.darkMode ?? true,
+      numberOfBeeps: insertSettings.numberOfBeeps ?? 3
     };
     this.settings.set(insertSettings.userId, settings);
     return settings;
@@ -58,7 +59,8 @@ class Storage {
       workDuration: settings.workDuration ?? existingSettings.workDuration,
       breakDuration: settings.breakDuration ?? existingSettings.breakDuration,
       iterations: settings.iterations ?? existingSettings.iterations,
-      darkMode: settings.darkMode ?? existingSettings.darkMode
+      darkMode: settings.darkMode ?? existingSettings.darkMode,
+      numberOfBeeps: settings.numberOfBeeps ?? existingSettings.numberOfBeeps
     };
 
     this.settings.set(userId, updatedSettings);

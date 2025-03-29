@@ -35,7 +35,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           workDuration: 25,
           breakDuration: 5,
           iterations: 4,
-          darkMode: true
+          darkMode: true,
+          numberOfBeeps: 3
         });
         console.log('GET /settings - Created default settings:', userSettings);
       }
@@ -49,7 +50,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         workDuration: userSettings.workDuration ?? 25,
         breakDuration: userSettings.breakDuration ?? 5,
         iterations: userSettings.iterations ?? 4,
-        darkMode: userSettings.darkMode ?? true
+        darkMode: userSettings.darkMode ?? true,
+        numberOfBeeps: userSettings.numberOfBeeps ?? 3
       };
       
       console.log('GET /settings - Returning settings:', responseSettings);
@@ -86,7 +88,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         workDuration: settingsData.workDuration ?? 25,
         breakDuration: settingsData.breakDuration ?? 5,
         iterations: settingsData.iterations ?? 4,
-        darkMode: settingsData.darkMode ?? true
+        darkMode: settingsData.darkMode ?? true,
+        numberOfBeeps: settingsData.numberOfBeeps ?? 3
       };
       
       console.log('POST /settings - Request settings after defaults:', requestSettings);
@@ -124,7 +127,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         workDuration: updatedSettings.workDuration ?? 25,
         breakDuration: updatedSettings.breakDuration ?? 5,
         iterations: updatedSettings.iterations ?? 4,
-        darkMode: updatedSettings.darkMode ?? true
+        darkMode: updatedSettings.darkMode ?? true,
+        numberOfBeeps: updatedSettings.numberOfBeeps ?? 3
       };
       
       console.log('POST /settings - Final settings to be sent:', responseSettings);

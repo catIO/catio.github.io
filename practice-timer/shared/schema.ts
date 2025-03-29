@@ -7,7 +7,8 @@ export const insertSettingsSchema = z.object({
   workDuration: z.number().default(25),
   breakDuration: z.number().default(5),
   iterations: z.number().default(4),
-  darkMode: z.boolean().default(true)
+  darkMode: z.boolean().default(true),
+  numberOfBeeps: z.number().min(1).max(5).default(3)
 });
 
 export const insertSessionSchema = z.object({

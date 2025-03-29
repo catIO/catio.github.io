@@ -11,6 +11,7 @@ export interface SettingsType {
   breakDuration: number;
   iterations: number;
   darkMode: boolean;
+  numberOfBeeps: number;
 }
 
 // Default settings from config file

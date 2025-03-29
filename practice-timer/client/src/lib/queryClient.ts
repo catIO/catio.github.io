@@ -60,8 +60,8 @@ export const getQueryFn: <T>(options: {
 export const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      staleTime: 0,
-      refetchOnMount: true,
+      staleTime: 1000 * 60 * 5, // Consider data fresh for 5 minutes
+      refetchOnMount: false, // Don't refetch when component mounts
       refetchOnWindowFocus: false,
       retry: 1,
     },

@@ -59,14 +59,24 @@ export default function Settings({ settings, isLoading, onChange }: SettingsProp
   };
 
   // Handle slider changes
-  const handleSliderChange = (key: keyof SettingsType, value: number[]) => {
+  const handleSliderChange = async (key: keyof SettingsType, value: number[]) => {
     console.log('Slider changed:', key, value);
     const updatedSettings = { ...localSettings, [key]: value[0] };
     // Remove userId and id from the settings object
     const { userId, id, ...settingsWithoutIds } = updatedSettings;
     console.log('Updated settings:', settingsWithoutIds);
+    
+    // Update local state immediately for responsive UI
     setLocalSettings(updatedSettings);
-    onChange(settingsWithoutIds);
+    
+    try {
+      // Call the onChange handler with the updated settings
+      await onChange(settingsWithoutIds);
+    } catch (error) {
+      console.error('Error updating settings:', error);
+      // Revert local state if the update fails
+      setLocalSettings(settings);
+    }
   };
 
   if (isLoading) {
@@ -116,6 +126,22 @@ export default function Settings({ settings, isLoading, onChange }: SettingsProp
             step={0.1}
             className="volume-slider"
             onValueChange={handleVolumeChange}
+          />
+        </div>
+
+        {/* Number of Beeps Slider */}
+        <div className="mt-4">
+          <div className="flex justify-between mb-1">
+            <Label className="text-sm text-muted-foreground">Number of Beeps</Label>
+            <span className="text-sm font-medium">{localSettings.numberOfBeeps} beeps</span>
+          </div>
+          <Slider
+            value={[localSettings.numberOfBeeps]}
+            min={1}
+            max={5}
+            step={1}
+            className="beeps-slider"
+            onValueChange={(value) => handleSliderChange('numberOfBeeps', value)}
           />
         </div>
 

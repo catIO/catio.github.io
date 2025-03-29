@@ -68,9 +68,9 @@ const audioElements: Record<SoundEffect, HTMLAudioElement> = {
 };
 
 // Play a sound effect
-export const playSound = async (effect: SoundEffect): Promise<void> => {
+export const playSound = async (effect: SoundEffect, numberOfBeeps: number = 3): Promise<void> => {
   try {
-    console.log(`Attempting to play ${effect} sound...`);
+    console.log(`Attempting to play ${effect} sound with ${numberOfBeeps} beeps...`);
     const audio = audioElements[effect];
     
     // Reset the audio element
@@ -83,11 +83,17 @@ export const playSound = async (effect: SoundEffect): Promise<void> => {
 
     // For end sound, play multiple beeps
     if (effect === 'end') {
-      // Wait a bit before playing the next beep
-      await new Promise(resolve => setTimeout(resolve, 300));
-      await audio.play();
-      await new Promise(resolve => setTimeout(resolve, 300));
-      await audio.play();
+      console.log(`Playing ${numberOfBeeps} beeps...`);
+      // Play additional beeps based on numberOfBeeps setting
+      for (let i = 0; i < numberOfBeeps - 2; i++) {
+        console.log(`Playing beep ${i + 2} of ${numberOfBeeps}`);
+        // Wait for the full duration of the beep (1.2 seconds) before playing the next one
+        await new Promise(resolve => setTimeout(resolve, 1200));
+        // Reset the audio element before playing next beep
+        audio.currentTime = 0;
+        await audio.play();
+      }
+      console.log(`Finished playing all ${numberOfBeeps} beeps`);
     }
   } catch (error) {
     console.error(`Error playing ${effect} sound:`, error);

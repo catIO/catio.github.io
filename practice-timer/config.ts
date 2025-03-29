@@ -8,7 +8,8 @@ export const config = {
     workDuration: 25, // minutes
     breakDuration: 5,  // minutes
     iterations: 4,     // number of work-break cycles
-    darkMode: true    // dark mode setting
+    darkMode: true,    // dark mode setting
+    numberOfBeeps: 3   // number of beeps when timer completes
   },
   
   // App configuration
