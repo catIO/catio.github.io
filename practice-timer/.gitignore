@@ -11,6 +11,7 @@
 /dist
 /.next
 /out
+/client/dist
 
 # Environment variables
 .env
