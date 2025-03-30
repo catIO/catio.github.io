@@ -85,7 +85,8 @@ export const playSound = async (effect: SoundEffect, numberOfBeeps: number = 3):
     if (effect === 'end') {
       console.log(`Playing ${numberOfBeeps} beeps...`);
       // Play additional beeps based on numberOfBeeps setting
-      for (let i = 0; i < numberOfBeeps - 2; i++) {
+      // We've already played one beep, so we need numberOfBeeps - 1 more
+      for (let i = 0; i < numberOfBeeps - 1; i++) {
         console.log(`Playing beep ${i + 2} of ${numberOfBeeps}`);
         // Wait for the full duration of the beep (1.2 seconds) before playing the next one
         await new Promise(resolve => setTimeout(resolve, 1200));

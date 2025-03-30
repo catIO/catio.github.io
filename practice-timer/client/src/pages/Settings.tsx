@@ -43,8 +43,11 @@ export default function SettingsPage() {
       queryClient.setQueryData(['/api/settings'], data);
     },
     onSettled: () => {
-      // Refetch to ensure we have the latest data
-      queryClient.invalidateQueries({ queryKey: ['/api/settings'] });
+      // Don't refetch immediately, let the optimistic update work
+      // Only refetch if there's an error
+      if (saveSettingsMutation.isError) {
+        queryClient.invalidateQueries({ queryKey: ['/api/settings'] });
+      }
     }
   });
 

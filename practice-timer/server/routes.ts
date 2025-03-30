@@ -159,6 +159,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   router.post("/sessions", async (req, res) => {
     try {
       const userId = res.locals.userId;
+      console.log('POST /sessions - Received request body:', req.body);
       
       // Validate session data
       const sessionData = insertSessionSchema
@@ -170,12 +171,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
         })
         .parse({ ...req.body, userId });
       
+      console.log('POST /sessions - Validated session data:', sessionData);
+      
       const newSession = await storage.createSession({
         ...sessionData,
         userId
       });
+      
+      console.log('POST /sessions - Created new session:', newSession);
       res.status(201).json(newSession);
     } catch (error) {
+      console.error('POST /sessions - Error:', error);
       if (error instanceof ZodError) {
         const validationError = fromZodError(error);
         res.status(400).json({ message: validationError.message });
