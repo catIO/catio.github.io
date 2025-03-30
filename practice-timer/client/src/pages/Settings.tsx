@@ -1,5 +1,5 @@
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { apiRequest, queryClient } from "@/lib/queryClient";
+import { apiRequest, queryClient, getQueryFn } from "@/lib/queryClient";
 import { SettingsType, DEFAULT_SETTINGS } from "@/lib/timerService";
 import Settings from "@/components/Settings";
 import { Button } from "@/components/ui/button";
@@ -9,13 +9,10 @@ export default function SettingsPage() {
   // Fetch user settings from the server
   const { data: settings, isLoading: isLoadingSettings } = useQuery<SettingsType>({
     queryKey: ['/api/settings'],
-    queryFn: async () => {
-      const response = await fetch('/api/settings');
-      if (!response.ok) throw new Error('Failed to fetch settings');
-      return response.json();
-    },
-    staleTime: 1000 * 60 * 5, // Consider data fresh for 5 minutes
-    refetchOnWindowFocus: false // Don't refetch when window regains focus
+    queryFn: getQueryFn({ on401: "returnNull" }),
+    staleTime: 0,
+    refetchOnMount: true,
+    refetchOnWindowFocus: true
   });
 
   // Save settings mutation
@@ -44,11 +41,9 @@ export default function SettingsPage() {
     onSuccess: (data) => {
       // Update the cache with the server response
       queryClient.setQueryData(['/api/settings'], data);
-      // Invalidate timer query to ensure it picks up new settings
-      queryClient.invalidateQueries({ queryKey: ['/timer'] });
     },
     onSettled: () => {
-      // Only refetch if there's an error
+      // Refetch to ensure we have the latest data
       queryClient.invalidateQueries({ queryKey: ['/api/settings'] });
     }
   });

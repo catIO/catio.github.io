@@ -87,73 +87,61 @@ export default function Home() {
     initNotifications();
   }, [requestNotificationPermission]);
 
-  // Update timer settings when server data is loaded or settings change
-  useEffect(() => {
-    if (settings) {
-      console.log('Settings updated:', settings);
-      updateSettings(settings);
-      // Reset the current timer to apply new duration immediately
-      resetTimer(true);
-    }
-  }, [settings, updateSettings, resetTimer]);
-
   // Handle reset all (reset to first iteration)
   const handleResetAll = useCallback(() => {
-    resetTimer();
-    toast({
-      title: "Timer Reset",
-      description: "Timer has been reset to the first work session",
-      variant: "default",
-    });
-  }, [resetTimer, toast]);
+    resetTimer(false);
+  }, [resetTimer]);
 
-  // Handle current timer reset
+  // Handle reset current (keep current iteration)
   const handleResetCurrent = useCallback(() => {
-    resetTimer(true); // true means only reset current timer
-    toast({
-      title: "Current Timer Reset",
-      description: "Current timer has been reset",
-      variant: "default",
-    });
-  }, [resetTimer, toast]);
+    resetTimer(true);
+  }, [resetTimer]);
 
-  // Initialize audio context on mount and user interaction
-  useEffect(() => {
-    const initAudio = async () => {
+  // Handle skip current session
+  const handleSkip = useCallback(() => {
+    skipTimer();
+  }, [skipTimer]);
+
+  // Handle pause/resume
+  const handlePauseResume = useCallback(async () => {
+    if (isRunning) {
+      pauseTimer();
+    } else {
       try {
-        console.log('Initializing audio context...');
         await resumeAudioContext();
-        console.log('Audio context initialized successfully');
+        startTimer();
       } catch (error) {
-        console.error('Error initializing audio context:', error);
+        console.error('Error starting timer:', error);
         toast({
-          title: "Audio Initialization Failed",
-          description: "Please try clicking anywhere on the page to enable sound.",
+          title: "Error Starting Timer",
+          description: "Could not start the timer. Please try again.",
           variant: "destructive",
         });
       }
+    }
+  }, [isRunning, pauseTimer, startTimer, toast]);
+
+  // Initialize audio context on mount
+  useEffect(() => {
+    const initAudio = async () => {
+      try {
+        await resumeAudioContext();
+      } catch (error) {
+        console.error('Error initializing audio:', error);
+      }
     };
 
-    // Try to initialize on mount
     initAudio();
+  }, []);
 
-    // Initialize on user interaction
-    const handleInteraction = async () => {
-      console.log('User interaction detected, initializing audio...');
-      await initAudio();
-      // Remove listeners after first interaction
-      document.removeEventListener('click', handleInteraction);
-      document.removeEventListener('touchstart', handleInteraction);
-    };
-
-    document.addEventListener('click', handleInteraction);
-    document.addEventListener('touchstart', handleInteraction);
-
-    return () => {
-      document.removeEventListener('click', handleInteraction);
-      document.removeEventListener('touchstart', handleInteraction);
-    };
-  }, [toast]);
+  // Handle user interaction with notifications
+  const handleInteraction = useCallback(async () => {
+    try {
+      await resumeAudioContext();
+    } catch (error) {
+      console.error('Error resuming audio context:', error);
+    }
+  }, []);
 
   return (
     <div className="bg-background text-foreground font-sans min-h-screen">
@@ -210,7 +198,7 @@ export default function Home() {
             onStart={startTimer} 
             onPause={pauseTimer} 
             onReset={handleResetCurrent}
-            onSkip={skipTimer} 
+            onSkip={handleSkip} 
           />
         </section>
       </div>

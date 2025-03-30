@@ -14,13 +14,14 @@ import { API_BASE_URL } from '@/lib/queryClient';
 
 function App() {
   // Fetch user settings from the server with staleTime: 0 to ensure fresh data
-  const { data: settings, isLoading: isLoadingSettings } = useQuery({
+  const { data: settings, isLoading: isLoadingSettings } = useQuery<SettingsType>({
     queryKey: ['/api/settings'],
     queryFn: getQueryFn({ on401: "returnNull" }),
     staleTime: 0,
     select: (data) => ({
+      ...DEFAULT_SETTINGS,
       ...data,
-      darkMode: data.darkMode ?? true // Default to dark mode if not set
+      darkMode: data?.darkMode ?? true // Default to dark mode if not set
     })
   });
 
@@ -32,7 +33,7 @@ function App() {
   // Initialize settings store
   useEffect(() => {
     if (settings) {
-      setSettings(settings);
+      setSettings(settings as any); // Type assertion needed due to store type mismatch
     }
   }, [settings, setSettings]);
 
@@ -42,21 +43,6 @@ function App() {
     setIsDark(darkMode);
     document.documentElement.classList.toggle('dark', darkMode);
   }, [settings?.darkMode, setIsDark]);
-
-  // Subscribe to settings changes
-  useEffect(() => {
-    const unsubscribe = queryClient.getQueryCache().subscribe(() => {
-      // Force a re-render when any query updates
-      const newSettings = queryClient.getQueryData<SettingsType>(['/api/settings']);
-      if (newSettings) {
-        // Settings updated, no need to log
-      }
-    });
-
-    return () => {
-      unsubscribe();
-    };
-  }, []);
 
   return (
     <div className="min-h-screen bg-background text-foreground transition-colors duration-200">

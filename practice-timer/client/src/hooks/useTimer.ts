@@ -136,8 +136,6 @@ export function useTimer({ initialSettings, onComplete }: UseTimerProps) {
 
   // Timer logic
   useEffect(() => {
-    let timerId: number | null = null;
-
     const updateTimer = () => {
       if (!isRunning || !startTimeRef.current) return;
 
@@ -162,21 +160,22 @@ export function useTimer({ initialSettings, onComplete }: UseTimerProps) {
       lastCheckRef.current = now;
     };
 
-    if (isRunning && startTimeRef.current) {
+    if (isRunning) {
       // Update immediately
       updateTimer();
       
       // Set up interval for updates
-      timerId = window.setInterval(updateTimer, 1000);
+      timerRef.current = window.setInterval(updateTimer, 1000);
     }
 
     // Cleanup function
     return () => {
-      if (timerId !== null) {
-        clearInterval(timerId);
+      if (timerRef.current !== null) {
+        clearInterval(timerRef.current);
+        timerRef.current = null;
       }
     };
-  }, [isRunning, totalTime, completeSession, timeRemaining]);
+  }, [isRunning, completeSession]);
 
   // Start timer
   const startTimer = useCallback(async () => {
@@ -185,6 +184,7 @@ export function useTimer({ initialSettings, onComplete }: UseTimerProps) {
         // Resume audio context for sound
         await resumeAudioContext();
         startTimeRef.current = Date.now();
+        lastCheckRef.current = Date.now();
         setIsRunning(true);
       } catch (error) {
         console.error('Error starting timer:', error);
@@ -247,8 +247,16 @@ export function useTimer({ initialSettings, onComplete }: UseTimerProps) {
   const updateSettings = useCallback((newSettings: SettingsType) => {
     setSettings(newSettings);
     setTotalIterations(newSettings.iterations);
+    
+    // If timer is running, stop it before updating duration
+    if (isRunning) {
+      setIsRunning(false);
+      startTimeRef.current = null;
+    }
+    
+    // Initialize timer with new settings
     initializeTimer(mode, newSettings);
-  }, [mode, initializeTimer]);
+  }, [mode, initializeTimer, isRunning]);
 
   // Initialize timer when mode changes
   useEffect(() => {
