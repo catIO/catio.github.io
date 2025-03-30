@@ -16,11 +16,7 @@ function App() {
   // Fetch user settings from the server with staleTime: 0 to ensure fresh data
   const { data: settings, isLoading: isLoadingSettings } = useQuery({
     queryKey: ['/api/settings'],
-    queryFn: async () => {
-      const response = await fetch('/api/settings');
-      if (!response.ok) throw new Error('Failed to fetch settings');
-      return response.json();
-    },
+    queryFn: getQueryFn({ on401: "returnNull" }),
     staleTime: 0,
     select: (data) => ({
       ...data,
