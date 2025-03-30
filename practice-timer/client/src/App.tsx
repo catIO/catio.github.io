@@ -53,7 +53,7 @@ function App() {
       // Force a re-render when any query updates
       const newSettings = queryClient.getQueryData<SettingsType>(['/api/settings']);
       if (newSettings) {
-        console.log('App - Settings cache updated:', newSettings);
+        // Settings updated, no need to log
       }
     });
 

@@ -146,8 +146,8 @@ export function useTimer({ initialSettings, onComplete }: UseTimerProps) {
       const endTime = startTime + (totalTime * 1000);
       const now = Date.now();
       
-      // If we've missed more than 1 second of updates, adjust the start time
-      if (now - lastCheckRef.current > 1000) {
+      // Only adjust start time if we've missed more than 2 seconds of updates
+      if (now - lastCheckRef.current > 2000) {
         console.log('Timer update delayed, adjusting start time');
         startTimeRef.current = now - (totalTime * 1000 - timeRemaining * 1000);
       }
@@ -171,26 +171,7 @@ export function useTimer({ initialSettings, onComplete }: UseTimerProps) {
       timerId = window.setInterval(updateTimer, 1000);
       
       // Set up a background timer that runs less frequently but is more reliable
-      backgroundTimerId = window.setInterval(() => {
-        if (isRunning && startTimeRef.current) {
-          const startTime = startTimeRef.current;
-          const endTime = startTime + (totalTime * 1000);
-          const now = Date.now();
-          
-          // If we've missed more than 1 second of updates, adjust the start time
-          if (now - lastCheckRef.current > 1000) {
-            console.log('Background timer update delayed, adjusting start time');
-            startTimeRef.current = now - (totalTime * 1000 - timeRemaining * 1000);
-          }
-          
-          if (now >= endTime) {
-            setIsRunning(false);
-            completeSession();
-          }
-          
-          lastCheckRef.current = now;
-        }
-      }, 1000); // Check every second instead of every 5 seconds
+      backgroundTimerId = window.setInterval(updateTimer, 1000);
     }
 
     // Cleanup function
