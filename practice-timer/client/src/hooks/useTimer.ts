@@ -146,8 +146,8 @@ export function useTimer({ initialSettings, onComplete }: UseTimerProps) {
       const endTime = startTime + (totalTime * 1000);
       const now = Date.now();
       
-      // If we've missed more than 5 seconds of updates, adjust the start time
-      if (now - lastCheckRef.current > 5000) {
+      // If we've missed more than 1 second of updates, adjust the start time
+      if (now - lastCheckRef.current > 1000) {
         console.log('Timer update delayed, adjusting start time');
         startTimeRef.current = now - (totalTime * 1000 - timeRemaining * 1000);
       }
@@ -177,8 +177,8 @@ export function useTimer({ initialSettings, onComplete }: UseTimerProps) {
           const endTime = startTime + (totalTime * 1000);
           const now = Date.now();
           
-          // If we've missed more than 5 seconds of updates, adjust the start time
-          if (now - lastCheckRef.current > 5000) {
+          // If we've missed more than 1 second of updates, adjust the start time
+          if (now - lastCheckRef.current > 1000) {
             console.log('Background timer update delayed, adjusting start time');
             startTimeRef.current = now - (totalTime * 1000 - timeRemaining * 1000);
           }
@@ -190,7 +190,7 @@ export function useTimer({ initialSettings, onComplete }: UseTimerProps) {
           
           lastCheckRef.current = now;
         }
-      }, 5000); // Check every 5 seconds
+      }, 1000); // Check every second instead of every 5 seconds
     }
 
     // Cleanup function
