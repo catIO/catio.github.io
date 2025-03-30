@@ -1,6 +1,7 @@
 import { QueryClient, QueryFunction } from "@tanstack/react-query";
 
-export const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
+// Use the same domain for API requests
+export const API_BASE_URL = import.meta.env.PROD ? '' : 'http://localhost:3000';
 
 async function throwIfResNotOk(res: Response) {
   if (!res.ok) {
@@ -52,7 +53,7 @@ export const getQueryFn: <T>(options: {
     }
 
     await throwIfResNotOk(res);
-    return await res.json();
+    return res.json();
   };
 
 export const queryClient = new QueryClient({
