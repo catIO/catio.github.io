@@ -63,6 +63,8 @@ export function useTimer({ initialSettings, onComplete }: UseTimerProps) {
 
   // Complete current session and start next one
   const completeSession = useCallback(async () => {
+    console.log('Timer finished! Mode:', mode, 'Iteration:', currentIteration);
+    
     if (timerRef.current) {
       clearInterval(timerRef.current);
       timerRef.current = null;
@@ -70,14 +72,15 @@ export function useTimer({ initialSettings, onComplete }: UseTimerProps) {
     
     // Ensure audio context is resumed for sound
     try {
+      console.log('Attempting to resume audio context...');
       await resumeAudioContext();
-      // Play the sound effect
-      await playSound();
+      console.log('Audio context resumed successfully');
     } catch (error) {
-      console.error('Error playing sound:', error);
+      console.error('Error resuming audio context:', error);
     }
     
     if (onComplete) {
+      console.log('Calling onComplete callback...');
       onComplete();
     }
     
@@ -89,6 +92,8 @@ export function useTimer({ initialSettings, onComplete }: UseTimerProps) {
     if (mode === 'break') {
       nextIteration = currentIteration + 1;
     }
+    
+    console.log('Next session:', { nextMode, nextIteration, totalIterations });
     
     // Check if we've completed all iterations
     if (nextIteration > totalIterations && mode === 'break') {
@@ -132,7 +137,7 @@ export function useTimer({ initialSettings, onComplete }: UseTimerProps) {
     } catch (error) {
       console.error('Error preparing session data:', error);
     }
-  }, [mode, settings, onComplete, initializeTimer, currentIteration, totalIterations, showNotification, saveSession, playSound]);
+  }, [mode, settings, onComplete, initializeTimer, currentIteration, totalIterations, showNotification, saveSession]);
 
   // Timer logic
   useEffect(() => {
@@ -150,6 +155,13 @@ export function useTimer({ initialSettings, onComplete }: UseTimerProps) {
       }
       
       if (now >= endTime) {
+        console.log('Timer reached end time!', {
+          now,
+          endTime,
+          timeRemaining,
+          mode,
+          currentIteration
+        });
         setIsRunning(false);
         completeSession();
       } else {
@@ -161,6 +173,7 @@ export function useTimer({ initialSettings, onComplete }: UseTimerProps) {
     };
 
     if (isRunning) {
+      console.log('Timer is running, setting up interval');
       // Update immediately
       updateTimer();
       
@@ -171,6 +184,7 @@ export function useTimer({ initialSettings, onComplete }: UseTimerProps) {
     // Cleanup function
     return () => {
       if (timerRef.current !== null) {
+        console.log('Cleaning up timer interval');
         clearInterval(timerRef.current);
         timerRef.current = null;
       }
@@ -181,11 +195,13 @@ export function useTimer({ initialSettings, onComplete }: UseTimerProps) {
   const startTimer = useCallback(async () => {
     if (!isRunning) {
       try {
+        console.log('Starting timer...', { mode, currentIteration, totalTime });
         // Resume audio context for sound
         await resumeAudioContext();
         startTimeRef.current = Date.now();
         lastCheckRef.current = Date.now();
         setIsRunning(true);
+        console.log('Timer started successfully');
       } catch (error) {
         console.error('Error starting timer:', error);
         toast({
@@ -194,8 +210,10 @@ export function useTimer({ initialSettings, onComplete }: UseTimerProps) {
           variant: "destructive",
         });
       }
+    } else {
+      console.log('Timer is already running');
     }
-  }, [isRunning, toast]);
+  }, [isRunning, toast, mode, currentIteration, totalTime]);
 
   // Pause timer
   const pauseTimer = useCallback(() => {
