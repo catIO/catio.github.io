@@ -81,7 +81,7 @@ export const playSound = async (effect: SoundEffect, numberOfBeeps: number = 3):
     if (effect === 'end') {
       console.log(`Playing ${numberOfBeeps} beeps...`);
       // Play all beeps in the loop
-      for (let i = 1; i < numberOfBeeps; i++) {
+      for (let i = 0; i < numberOfBeeps; i++) {
         console.log(`Playing beep ${i + 1} of ${numberOfBeeps}`);
         // Play the sound
         await audio.play();
