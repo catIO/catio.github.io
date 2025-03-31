@@ -77,24 +77,24 @@ export const playSound = async (effect: SoundEffect, numberOfBeeps: number = 3):
     audio.currentTime = 0;
     audio.volume = masterVolume;
     
-    // Play the sound
-    await audio.play();
-    console.log(`Started playing ${effect} sound at volume ${masterVolume}`);
-
     // For end sound, play multiple beeps
     if (effect === 'end') {
       console.log(`Playing ${numberOfBeeps} beeps...`);
-      // Play additional beeps based on numberOfBeeps setting
-      // We've already played one beep, so we need numberOfBeeps - 1 more
-      for (let i = 0; i < numberOfBeeps - 1; i++) {
-        console.log(`Playing beep ${i + 2} of ${numberOfBeeps}`);
+      // Play all beeps in the loop
+      for (let i = 1; i < numberOfBeeps; i++) {
+        console.log(`Playing beep ${i + 1} of ${numberOfBeeps}`);
+        // Play the sound
+        await audio.play();
         // Wait for the full duration of the beep (1.2 seconds) before playing the next one
         await new Promise(resolve => setTimeout(resolve, 1200));
         // Reset the audio element before playing next beep
         audio.currentTime = 0;
-        await audio.play();
       }
       console.log(`Finished playing all ${numberOfBeeps} beeps`);
+    } else {
+      // For other sounds, just play once
+      await audio.play();
+      console.log(`Started playing ${effect} sound at volume ${masterVolume}`);
     }
   } catch (error) {
     console.error(`Error playing ${effect} sound:`, error);
