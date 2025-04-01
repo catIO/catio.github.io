@@ -6,76 +6,68 @@ type SoundEffect = 'start' | 'end' | 'reset' | 'skip';
 // Volume control (0.0 to 1.0)
 let masterVolume = 0.5;
 
-// Create audio elements for each sound
-const createAudioElement = (frequency: number, duration: number): HTMLAudioElement => {
-  const audio = new Audio();
-  audio.src = `data:audio/wav;base64,${generateWavBase64(frequency, duration)}`;
-  audio.volume = masterVolume;
-  return audio;
+// Audio context
+let audioContext: AudioContext | null = null;
+let audioContextInitialized = false;
+
+// Initialize audio context
+const getAudioContext = () => {
+  if (!audioContext) {
+    audioContext = new AudioContext();
+  }
+  return audioContext;
 };
 
-// Generate WAV file as base64
-const generateWavBase64 = (frequency: number, duration: number): string => {
-  const sampleRate = 44100;
+// Initialize audio context after user interaction
+export const initializeAudioContext = async () => {
+  if (!audioContextInitialized) {
+    try {
+      console.log('Initializing audio context...');
+      const context = getAudioContext();
+      console.log('Audio context state:', context.state);
+      
+      if (context.state === 'suspended') {
+        console.log('Resuming suspended audio context...');
+        await context.resume();
+        console.log('Audio context resumed successfully');
+      }
+      
+      audioContextInitialized = true;
+      console.log('Audio context initialized successfully');
+    } catch (error) {
+      console.error('Error initializing audio context:', error);
+    }
+  } else {
+    console.log('Audio context already initialized');
+  }
+};
+
+// Generate sine wave
+const generateSineWave = (frequency: number, duration: number): Float32Array => {
+  const sampleRate = getAudioContext().sampleRate;
   const numSamples = Math.floor(sampleRate * duration);
-  const buffer = new ArrayBuffer(44 + numSamples * 2);
-  const view = new DataView(buffer);
+  const buffer = new Float32Array(numSamples);
   
-  // WAV header
-  writeString(view, 0, 'RIFF');
-  view.setUint32(4, 36 + numSamples * 2, true);
-  writeString(view, 8, 'WAVE');
-  writeString(view, 12, 'fmt ');
-  view.setUint32(16, 16, true);
-  view.setUint16(20, 1, true);
-  view.setUint16(22, 1, true);
-  view.setUint32(24, sampleRate, true);
-  view.setUint32(28, sampleRate * 2, true);
-  view.setUint16(32, 2, true);
-  view.setUint16(34, 16, true);
-  writeString(view, 36, 'data');
-  view.setUint32(40, numSamples * 2, true);
-  
-  // Generate sine wave
   for (let i = 0; i < numSamples; i++) {
     const t = i / sampleRate;
     const amplitude = Math.exp(-2 * t); // Exponential decay
-    const value = amplitude * Math.sin(2 * Math.PI * frequency * t);
-    view.setInt16(44 + i * 2, value * 32767, true);
+    buffer[i] = amplitude * Math.sin(2 * Math.PI * frequency * t);
   }
   
-  // Convert buffer to base64
-  const bytes = new Uint8Array(buffer);
-  let binary = '';
-  for (let i = 0; i < bytes.length; i++) {
-    binary += String.fromCharCode(bytes[i]);
-  }
-  return btoa(binary);
-};
-
-const writeString = (view: DataView, offset: number, string: string): void => {
-  for (let i = 0; i < string.length; i++) {
-    view.setUint8(offset + i, string.charCodeAt(i));
-  }
-};
-
-// Sound effect cache
-const audioElements: Record<SoundEffect, HTMLAudioElement> = {
-  start: createAudioElement(440, 0.8),
-  end: createAudioElement(880, 1.2),
-  reset: createAudioElement(600, 0.4),
-  skip: createAudioElement(500, 0.3)
+  return buffer;
 };
 
 // Play a sound effect
 export const playSound = async (effect: SoundEffect, numberOfBeeps: number = 3): Promise<void> => {
   try {
     console.log(`Attempting to play ${effect} sound with ${numberOfBeeps} beeps...`);
-    const audio = audioElements[effect];
     
-    // Reset the audio element
-    audio.currentTime = 0;
-    audio.volume = masterVolume;
+    // Ensure audio context is initialized
+    await initializeAudioContext();
+    
+    // Get audio context
+    const context = getAudioContext();
+    console.log('Audio context state before playing:', context.state);
     
     // For end sound, play multiple beeps
     if (effect === 'end') {
@@ -83,21 +75,54 @@ export const playSound = async (effect: SoundEffect, numberOfBeeps: number = 3):
       // Play all beeps in the loop
       for (let i = 0; i < numberOfBeeps; i++) {
         console.log(`Playing beep ${i + 1} of ${numberOfBeeps}`);
-        // Play the sound
-        await audio.play();
+        
+        // Create oscillator and gain nodes
+        const oscillator = context.createOscillator();
+        const gainNode = context.createGain();
+        
+        // Set up oscillator
+        oscillator.type = 'sine';
+        oscillator.frequency.setValueAtTime(880, context.currentTime);
+        
+        // Set up gain node
+        gainNode.gain.setValueAtTime(masterVolume, context.currentTime);
+        gainNode.gain.exponentialRampToValueAtTime(0.01, context.currentTime + 1.2);
+        
+        // Connect nodes
+        oscillator.connect(gainNode);
+        gainNode.connect(context.destination);
+        
+        // Start and stop oscillator
+        oscillator.start(context.currentTime);
+        oscillator.stop(context.currentTime + 1.2);
+        
         // Wait for the full duration of the beep (1.2 seconds) before playing the next one
         await new Promise(resolve => setTimeout(resolve, 1200));
-        // Reset the audio element before playing next beep
-        audio.currentTime = 0;
       }
       console.log(`Finished playing all ${numberOfBeeps} beeps`);
     } else {
       // For other sounds, just play once
-      await audio.play();
-      console.log(`Started playing ${effect} sound at volume ${masterVolume}`);
+      const oscillator = context.createOscillator();
+      const gainNode = context.createGain();
+      
+      // Set up oscillator
+      oscillator.type = 'sine';
+      oscillator.frequency.setValueAtTime(440, context.currentTime);
+      
+      // Set up gain node
+      gainNode.gain.setValueAtTime(masterVolume, context.currentTime);
+      gainNode.gain.exponentialRampToValueAtTime(0.01, context.currentTime + 0.5);
+      
+      // Connect nodes
+      oscillator.connect(gainNode);
+      gainNode.connect(context.destination);
+      
+      // Start and stop oscillator
+      oscillator.start(context.currentTime);
+      oscillator.stop(context.currentTime + 0.5);
     }
   } catch (error) {
-    console.error(`Error playing ${effect} sound:`, error);
+    console.error('Error playing sound:', error);
     throw error;
   }
 };
@@ -106,15 +131,9 @@ export const playSound = async (effect: SoundEffect, numberOfBeeps: number = 3):
 export const setVolume = (volume: number): void => {
   masterVolume = Math.max(0, Math.min(1, volume));
   console.log(`Master volume set to ${masterVolume}`);
-  
-  // Update volume for all audio elements
-  Object.values(audioElements).forEach(audio => {
-    audio.volume = masterVolume;
-  });
 };
 
 // Resume audio context (compatibility function)
 export const resumeAudioContext = async (): Promise<void> => {
-  // No-op for HTML5 Audio
-  return Promise.resolve();
+  await initializeAudioContext();
 };

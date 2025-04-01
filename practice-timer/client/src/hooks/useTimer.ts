@@ -70,15 +70,6 @@ export function useTimer({ initialSettings, onComplete }: UseTimerProps) {
       timerRef.current = null;
     }
     
-    // Ensure audio context is resumed for sound
-    try {
-      console.log('Attempting to resume audio context...');
-      await resumeAudioContext();
-      console.log('Audio context resumed successfully');
-    } catch (error) {
-      console.error('Error resuming audio context:', error);
-    }
-    
     if (onComplete) {
       console.log('Calling onComplete callback...');
       onComplete();
@@ -103,6 +94,7 @@ export function useTimer({ initialSettings, onComplete }: UseTimerProps) {
       
       // Show completion notification
       if (settings.browserNotificationsEnabled) {
+        console.log('Showing cycle completion notification');
         showNotification('Practice Cycle Complete! 🎉', {
           body: 'Great job! You\'ve completed all your practice sessions.',
         });
@@ -110,6 +102,7 @@ export function useTimer({ initialSettings, onComplete }: UseTimerProps) {
     } else {
       // Show session completion notification
       if (settings.browserNotificationsEnabled) {
+        console.log('Showing session completion notification');
         showNotification(`${nextMode === 'work' ? 'Work' : 'Break'} Session Complete! ${nextMode === 'work' ? '💪' : '☕'}`, {
           body: `Time for a ${nextMode === 'work' ? 'break' : 'work'} session.`,
         });
@@ -144,23 +137,19 @@ export function useTimer({ initialSettings, onComplete }: UseTimerProps) {
     const updateTimer = () => {
       if (!isRunning || !startTimeRef.current) return;
 
+      const now = Date.now();
       const startTime = startTimeRef.current;
       const endTime = startTime + (totalTime * 1000);
-      const now = Date.now();
-      
-      // Only adjust start time if we've missed more than 10 seconds of updates
-      if (now - lastCheckRef.current > 10000) {
-        console.log('Timer update delayed, adjusting start time');
-        startTimeRef.current = now - (totalTime * 1000 - timeRemaining * 1000);
-      }
       
       if (now >= endTime) {
-        console.log('Timer reached end time!', {
+        console.log('Timer finished!', {
           now,
           endTime,
           timeRemaining,
           mode,
-          currentIteration
+          currentIteration,
+          totalIterations,
+          isHidden: document.hidden
         });
         setIsRunning(false);
         completeSession();
@@ -168,8 +157,6 @@ export function useTimer({ initialSettings, onComplete }: UseTimerProps) {
         const remaining = Math.max(0, Math.ceil((endTime - now) / 1000));
         setTimeRemaining(remaining);
       }
-      
-      lastCheckRef.current = now;
     };
 
     if (isRunning) {
@@ -190,6 +177,29 @@ export function useTimer({ initialSettings, onComplete }: UseTimerProps) {
       }
     };
   }, [isRunning, completeSession]);
+
+  // Handle visibility change
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.hidden) {
+        console.log('Page hidden, adjusting timer');
+        // Store the current time when page becomes hidden
+        lastCheckRef.current = Date.now();
+      } else {
+        console.log('Page visible, adjusting timer');
+        // Adjust the start time based on how long the page was hidden
+        if (startTimeRef.current) {
+          const hiddenDuration = Date.now() - lastCheckRef.current;
+          startTimeRef.current += hiddenDuration;
+        }
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, []);
 
   // Start timer
   const startTimer = useCallback(async () => {
@@ -263,6 +273,7 @@ export function useTimer({ initialSettings, onComplete }: UseTimerProps) {
 
   // Update settings
   const updateSettings = useCallback((newSettings: SettingsType) => {
+    console.log('Updating timer settings:', newSettings);
     setSettings(newSettings);
     setTotalIterations(newSettings.iterations);
     
@@ -274,12 +285,13 @@ export function useTimer({ initialSettings, onComplete }: UseTimerProps) {
     
     // Initialize timer with new settings
     initializeTimer(mode, newSettings);
-  }, [mode, initializeTimer, isRunning]);
+  }, [isRunning, mode, initializeTimer]);
 
-  // Initialize timer when mode changes
+  // Effect to handle settings changes
   useEffect(() => {
+    console.log('Settings changed, updating timer:', settings);
     initializeTimer(mode, settings);
-  }, [mode, settings, initializeTimer]);
+  }, [settings, mode, initializeTimer]);
 
   return {
     timeRemaining,
