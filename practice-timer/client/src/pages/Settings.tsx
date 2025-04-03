@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useLocation } from "wouter";
+import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { SettingsType, DEFAULT_SETTINGS } from "@/lib/timerService";
 import { getSettings, saveSettings } from '@/lib/localStorage';
@@ -11,7 +11,7 @@ import { useNotification } from "@/hooks/useNotification";
 import { useSettingsStore } from "@/stores/settingsStore";
 
 export default function Settings() {
-  const [, setLocation] = useLocation();
+  const navigate = useNavigate();
   const { toast } = useToast();
   const { requestNotificationPermission } = useNotification();
   const { setSettings: updateGlobalSettings } = useSettingsStore();
@@ -45,7 +45,7 @@ export default function Settings() {
             variant="ghost"
             size="icon"
             className="text-foreground"
-            onClick={() => setLocation("/")}
+            onClick={() => navigate("/")}
           >
             <span className="material-icons">close</span>
           </Button>

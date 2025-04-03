@@ -7,7 +7,7 @@ import { useNotification } from "@/hooks/useNotification";
 import { useToast } from "@/hooks/use-toast";
 import { SettingsType } from "@/lib/timerService";
 import { Button } from "@/components/ui/button";
-import { Link } from "wouter";
+import { Link } from "react-router-dom";
 import { resumeAudioContext } from "@/lib/soundEffects";
 import { getSettings } from "@/lib/localStorage";
 
@@ -100,7 +100,7 @@ export default function Home() {
       <div className="max-w-2xl mx-auto">
         <header className="p-4 bg-card shadow-sm flex items-center justify-between">
           <h1 className="text-2xl font-medium">Practice Timer</h1>
-          <Link href="/settings">
+          <Link to="/settings">
             <Button
               variant="ghost"
               size="icon"
