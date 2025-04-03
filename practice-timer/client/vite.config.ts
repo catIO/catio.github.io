@@ -5,13 +5,35 @@ import path from 'path'
 // https://vitejs.dev/config/
 export default defineConfig({
   plugins: [react()],
+  server: {
+    port: 5173,
+    strictPort: true,
+    watch: {
+      usePolling: true,
+      interval: 1000
+    },
+    hmr: {
+      overlay: false
+    }
+  },
+  base: '/',
+  build: {
+    outDir: 'dist',
+    assetsDir: 'assets',
+    sourcemap: true,
+    rollupOptions: {
+      output: {
+        manualChunks: undefined
+      }
+    }
+  },
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src'),
-      '@shared': path.resolve(__dirname, '../shared'),
     },
   },
-  server: {
+  preview: {
     port: 5173,
-  },
+    strictPort: true,
+  }
 }) 

@@ -1,4 +1,4 @@
-import { useEffect, useCallback } from "react";
+import { useEffect, useCallback, useState } from "react";
 import Timer from "@/components/Timer";
 import TimerControls from "@/components/TimerControls";
 import IterationTracker from "@/components/IterationTracker";
@@ -14,6 +14,7 @@ import { getSettings } from "@/lib/localStorage";
 export default function Home() {
   // Get settings from local storage
   const settings: SettingsType = getSettings();
+  const [audioInitialized, setAudioInitialized] = useState(false);
   
   // Initialize the timer with settings from local storage
   const { 
@@ -67,33 +68,47 @@ export default function Home() {
     initNotifications();
   }, [requestNotificationPermission]);
 
-  // Handle reset all (reset to first iteration)
-  const handleResetAll = useCallback(() => {
-    resetTimer(false);
-  }, [resetTimer]);
-
-  // Handle reset current (keep current iteration)
-  const handleResetCurrent = useCallback(() => {
-    resetTimer(true);
-  }, [resetTimer]);
-
-  // Handle skip current session
-  const handleSkip = useCallback(() => {
-    skipTimer();
-  }, [skipTimer]);
-
   // Initialize audio context on first user interaction
-  useEffect(() => {
-    const initAudio = async () => {
+  const initializeAudio = async () => {
+    if (!audioInitialized) {
       try {
         await resumeAudioContext();
+        setAudioInitialized(true);
       } catch (error) {
         console.error('Error initializing audio:', error);
       }
-    };
+    }
+  };
 
-    initAudio();
-  }, []);
+  // Handle reset all (reset to first iteration)
+  const handleResetAll = useCallback(async () => {
+    await initializeAudio();
+    resetTimer(false);
+  }, [resetTimer, initializeAudio]);
+
+  // Handle reset current (keep current iteration)
+  const handleResetCurrent = useCallback(async () => {
+    await initializeAudio();
+    resetTimer(true);
+  }, [resetTimer, initializeAudio]);
+
+  // Handle skip current session
+  const handleSkip = useCallback(async () => {
+    await initializeAudio();
+    skipTimer();
+  }, [skipTimer, initializeAudio]);
+
+  // Handle start timer
+  const handleStart = useCallback(async () => {
+    await initializeAudio();
+    startTimer();
+  }, [startTimer, initializeAudio]);
+
+  // Handle pause timer
+  const handlePause = useCallback(async () => {
+    await initializeAudio();
+    pauseTimer();
+  }, [pauseTimer, initializeAudio]);
 
   return (
     <div className="bg-background text-foreground font-sans min-h-screen">
@@ -122,8 +137,8 @@ export default function Home() {
 
             <TimerControls
               isRunning={isRunning}
-              onStart={startTimer}
-              onPause={pauseTimer}
+              onStart={handleStart}
+              onPause={handlePause}
               onReset={handleResetAll}
               onSkip={handleSkip}
             />
