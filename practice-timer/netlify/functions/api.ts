@@ -1,48 +1,56 @@
 import { Handler } from '@netlify/functions';
-import app from '../../server';
 
-// Create a handler for the Express app
+// Create a handler for API requests
 const handler: Handler = async (event, context) => {
-  // Convert Netlify event to Express request
-  const req = {
-    method: event.httpMethod,
-    path: event.path.replace('/.netlify/functions/api', ''),
-    headers: event.headers,
-    body: event.body ? JSON.parse(event.body) : undefined,
+  // Handle CORS
+  if (event.httpMethod === 'OPTIONS') {
+    return {
+      statusCode: 200,
+      headers: {
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Headers': 'Content-Type',
+        'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+      },
+    };
+  }
+
+  // Add CORS headers to all responses
+  const headers = {
+    'Access-Control-Allow-Origin': '*',
+    'Content-Type': 'application/json',
   };
 
-  // Create a response object
-  const res = {
-    statusCode: 200,
-    headers: {},
-    body: '',
-    setHeader: (name: string, value: string) => {
-      res.headers[name] = value;
-    },
-    send: (body: any) => {
-      res.body = typeof body === 'string' ? body : JSON.stringify(body);
-    },
-    json: (body: any) => {
-      res.body = JSON.stringify(body);
-    },
-  };
+  try {
+    // Handle different API endpoints
+    const path = event.path.replace('/.netlify/functions/api', '');
+    
+    switch (path) {
+      case '/sessions':
+        if (event.httpMethod === 'POST') {
+          // For now, just return success
+          return {
+            statusCode: 200,
+            headers,
+            body: JSON.stringify({ success: true }),
+          };
+        }
+        break;
 
-  // Handle the request
-  await new Promise((resolve) => {
-    app(req, res, () => {
-      resolve(null);
-    });
-  });
-
-  // Return the response
-  return {
-    statusCode: res.statusCode,
-    headers: {
-      'Content-Type': 'application/json',
-      ...res.headers,
-    },
-    body: res.body,
-  };
+      default:
+        return {
+          statusCode: 404,
+          headers,
+          body: JSON.stringify({ error: 'Not found' }),
+        };
+    }
+  } catch (error) {
+    console.error('API Error:', error);
+    return {
+      statusCode: 500,
+      headers,
+      body: JSON.stringify({ error: 'Internal server error' }),
+    };
+  }
 };
 
 export { handler }; 
