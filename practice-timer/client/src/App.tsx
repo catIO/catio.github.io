@@ -1,58 +1,43 @@
-import { Switch, Route } from "wouter";
-import Home from "@/pages/Home";
-import Settings from "@/pages/Settings";
-import NotFound from "@/pages/not-found";
-import { useEffect } from "react";
-import { useQuery } from "@tanstack/react-query";
-import { apiRequest, queryClient } from "@/lib/queryClient";
-import { SettingsType, DEFAULT_SETTINGS } from "@/lib/timerService";
-import { useDarkMode } from "@/lib/darkModeStore";
-import { getQueryFn } from "@/lib/queryClient";
-import { Toaster } from 'react-hot-toast';
+import { useEffect } from 'react';
+import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { Toaster } from '@/components/ui/toaster';
+import Home from '@/pages/Home';
+import Settings from '@/pages/Settings';
 import { useSettingsStore } from '@/stores/settingsStore';
-import { API_BASE_URL } from '@/lib/queryClient';
+import { getSettings } from '@/lib/localStorage';
+import { DEFAULT_SETTINGS } from '@/lib/timerService';
 
 function App() {
-  // Fetch user settings from the server with staleTime: 0 to ensure fresh data
-  const { data: settings, isLoading: isLoadingSettings } = useQuery<SettingsType>({
-    queryKey: ['/api/settings'],
-    queryFn: getQueryFn({ on401: "returnNull" }),
-    staleTime: 0,
-    select: (data) => ({
-      ...DEFAULT_SETTINGS,
-      ...data,
-      darkMode: data?.darkMode ?? true // Default to dark mode if not set
-    })
-  });
+  const { setSettings } = useSettingsStore();
 
-  // Get the current settings with fallback to defaults
-  const currentSettings: SettingsType = settings || DEFAULT_SETTINGS;
-  const setIsDark = useDarkMode(state => state.setIsDark);
-  const setSettings = useSettingsStore(state => state.setSettings);
-  
-  // Initialize settings store
   useEffect(() => {
-    if (settings) {
-      setSettings(settings as any); // Type assertion needed due to store type mismatch
+    // Initialize settings from local storage
+    const localSettings = getSettings();
+    if (localSettings) {
+      setSettings(localSettings);
+      if (localSettings.darkMode) {
+        document.documentElement.classList.add('dark');
+      } else {
+        document.documentElement.classList.remove('dark');
+      }
+    } else {
+      setSettings(DEFAULT_SETTINGS);
+      if (DEFAULT_SETTINGS.darkMode) {
+        document.documentElement.classList.add('dark');
+      } else {
+        document.documentElement.classList.remove('dark');
+      }
     }
-  }, [settings, setSettings]);
-
-  // Initialize dark mode from settings or defaults
-  useEffect(() => {
-    const darkMode = settings?.darkMode ?? DEFAULT_SETTINGS.darkMode;
-    setIsDark(darkMode);
-    document.documentElement.classList.toggle('dark', darkMode);
-  }, [settings?.darkMode, setIsDark]);
+  }, [setSettings]);
 
   return (
-    <div className="min-h-screen bg-background text-foreground transition-colors duration-200">
+    <Router future={{ v7_startTransition: true }}>
+      <Routes>
+        <Route path="/" element={<Home />} />
+        <Route path="/settings" element={<Settings />} />
+      </Routes>
       <Toaster />
-      <Switch>
-        <Route path="/" component={Home} />
-        <Route path="/settings" component={Settings} />
-        <Route component={NotFound} />
-      </Switch>
-    </div>
+    </Router>
   );
 }
 
