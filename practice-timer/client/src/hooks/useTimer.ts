@@ -1,7 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { SettingsType } from '@/lib/timerService';
-import { apiRequest } from '@/lib/queryClient';
-import { useNotification } from './useNotification';
+import { useQueryClient } from '@tanstack/react-query';
+import { useNotification } from '@/hooks/useNotification';
 import { useToast } from '@/hooks/use-toast';
 import { resumeAudioContext } from '@/lib/soundEffects';
 
@@ -11,12 +10,20 @@ interface WakeLock {
 }
 
 interface UseTimerProps {
-  initialSettings: SettingsType;
+  initialSettings: {
+    workDuration: number;
+    breakDuration: number;
+    iterations?: number;
+    soundEnabled: boolean;
+    browserNotificationsEnabled: boolean;
+    numberOfBeeps: number;
+    mode: string;
+  };
   onComplete?: () => void;
 }
 
 export function useTimer({ initialSettings, onComplete }: UseTimerProps) {
-  const [settings, setSettings] = useState<SettingsType>(initialSettings);
+  const [settings, setSettings] = useState(initialSettings);
   const [mode, setMode] = useState<'work' | 'break'>('work');
   const [timeRemaining, setTimeRemaining] = useState(initialSettings.workDuration * 60);
   const [totalTime, setTotalTime] = useState(initialSettings.workDuration * 60);
@@ -28,6 +35,10 @@ export function useTimer({ initialSettings, onComplete }: UseTimerProps) {
   const { showNotification } = useNotification();
   const wakeLockRef = useRef<WakeLock | null>(null);
   const { toast } = useToast();
+  const startTimeRef = useRef<number>(0);
+  const lastUpdateRef = useRef<number>(0);
+  const animationFrameRef = useRef<number>(0);
+  const lastSecondRef = useRef<number>(0);
 
   // Complete current session and start next one
   const completeSession = useCallback(async () => {
@@ -67,27 +78,14 @@ export function useTimer({ initialSettings, onComplete }: UseTimerProps) {
         return newIteration;
       }
     });
-
-    // Save session to server
-    try {
-      await apiRequest('POST', '/api/sessions', {
-        type: mode,
-        startTime: new Date(Date.now() - (mode === 'work' ? settings.workDuration : settings.breakDuration) * 60 * 1000).toISOString(),
-        endTime: new Date().toISOString(),
-        duration: mode === 'work' ? settings.workDuration : settings.breakDuration,
-        completed: true
-      });
-    } catch (error) {
-      console.error('Error saving session:', error);
-    }
   }, [mode, settings, totalIterations, showNotification]);
 
   // Setup worker message handler
-  const setupWorkerMessageHandler = useCallback((worker: Worker) => {
-    worker.onmessage = (event) => {
+  useEffect(() => {
+    if (!workerRef.current) return;
+
+    const handleMessage = (event: MessageEvent) => {
       const { type, payload } = event.data;
-      console.log('Received message from worker:', type, payload);
-      
       switch (type) {
         case 'TICK':
           setTimeRemaining(payload.timeRemaining);
@@ -103,30 +101,22 @@ export function useTimer({ initialSettings, onComplete }: UseTimerProps) {
       }
     };
 
-    worker.onerror = (error) => {
-      console.error('Worker error:', error);
-    };
-  }, [onComplete, completeSession]);
-
-  // Initialize Web Worker
-  useEffect(() => {
-    if (!workerRef.current) {
-      console.log('Initializing Web Worker');
-      workerRef.current = new Worker(
-        new URL('../workers/timerWorker.ts', import.meta.url),
-        { type: 'module' }
-      );
-      setupWorkerMessageHandler(workerRef.current);
-    }
-
-    // Keep the worker alive
+    workerRef.current.addEventListener('message', handleMessage);
     return () => {
-      // Don't do anything on cleanup - keep the worker running
+      workerRef.current?.removeEventListener('message', handleMessage);
     };
-  }, [setupWorkerMessageHandler]);
+  }, [completeSession, onComplete]);
 
-  // Initialize timer based on current mode and settings
-  const initializeTimer = useCallback((currentMode: 'work' | 'break', currentSettings: SettingsType) => {
+  // Initialize worker
+  useEffect(() => {
+    workerRef.current = new Worker(new URL('../workers/timerWorker.ts', import.meta.url));
+    return () => {
+      workerRef.current?.terminate();
+    };
+  }, []);
+
+  // Initialize timer with current settings
+  const initializeTimer = useCallback((currentMode: 'work' | 'break', currentSettings: typeof settings) => {
     const duration = currentMode === 'work' 
       ? currentSettings.workDuration 
       : currentSettings.breakDuration;
@@ -143,11 +133,10 @@ export function useTimer({ initialSettings, onComplete }: UseTimerProps) {
     }
   }, []);
 
-  // Update settings
-  const updateSettings = useCallback((newSettings: SettingsType) => {
+  const updateSettings = useCallback((newSettings: typeof settings) => {
     console.log('Updating settings:', newSettings);
     setSettings(newSettings);
-    setTotalIterations(newSettings.iterations);
+    setTotalIterations(newSettings.iterations || 4);
     
     // If we're in break mode, update the break duration
     if (mode === 'break') {
@@ -163,15 +152,6 @@ export function useTimer({ initialSettings, onComplete }: UseTimerProps) {
   const pauseTimer = useCallback(() => {
     if (!workerRef.current) return;
 
-    // Release wake lock if it exists
-    if (wakeLockRef.current) {
-      wakeLockRef.current.release()
-        .then(() => {
-          wakeLockRef.current = null;
-        })
-        .catch(err => console.log('Error releasing wake lock:', err));
-    }
-
     workerRef.current.postMessage({ type: 'PAUSE' });
     setIsRunning(false);
   }, []);
@@ -179,15 +159,6 @@ export function useTimer({ initialSettings, onComplete }: UseTimerProps) {
   // Reset timer
   const resetTimer = useCallback((resetCurrentOnly = false) => {
     if (!workerRef.current) return;
-
-    // Release wake lock if it exists
-    if (wakeLockRef.current) {
-      wakeLockRef.current.release()
-        .then(() => {
-          wakeLockRef.current = null;
-        })
-        .catch(err => console.log('Error releasing wake lock:', err));
-    }
 
     const newMode = resetCurrentOnly ? mode : 'work';
     const newTime = newMode === 'work' ? settings.workDuration * 60 : settings.breakDuration * 60;
@@ -215,6 +186,15 @@ export function useTimer({ initialSettings, onComplete }: UseTimerProps) {
     setIsRunning(false);
     if (workerRef.current) {
       workerRef.current.postMessage({ type: 'PAUSE' });
+    }
+
+    // Release wake lock if it exists
+    if (wakeLockRef.current) {
+      wakeLockRef.current.release()
+        .then(() => {
+          wakeLockRef.current = null;
+        })
+        .catch(err => console.log('Error releasing wake lock:', err));
     }
     
     const nextMode = mode === 'work' ? 'break' : 'work';
@@ -256,23 +236,18 @@ export function useTimer({ initialSettings, onComplete }: UseTimerProps) {
 
   // Start timer
   const startTimer = useCallback(async () => {
-    if (!workerRef.current) return;
-
     try {
-      // Request wake lock to prevent device from sleeping
+      if (!workerRef.current) return;
+
+      // Request wake lock
       if ('wakeLock' in navigator) {
         try {
-          const wakeLock = await (navigator as any).wakeLock.request('screen');
-          wakeLockRef.current = wakeLock;
+          wakeLockRef.current = await (navigator as any).wakeLock.request('screen');
         } catch (err) {
-          console.log('Wake Lock error:', err);
+          console.log('Error requesting wake lock:', err);
         }
       }
 
-      // Resume audio context for sound
-      await resumeAudioContext();
-      
-      // Send current timeRemaining when starting
       workerRef.current.postMessage({ 
         type: 'START',
         payload: { timeRemaining }
@@ -281,12 +256,25 @@ export function useTimer({ initialSettings, onComplete }: UseTimerProps) {
     } catch (error) {
       console.error('Error starting timer:', error);
       toast({
-        title: "Error Starting Timer",
-        description: "Could not start the timer. Please try again.",
+        title: "Error",
+        description: "Failed to start timer. Please try again.",
         variant: "destructive",
       });
     }
   }, [toast, timeRemaining]);
+
+  // Cleanup wake lock on unmount
+  useEffect(() => {
+    return () => {
+      if (wakeLockRef.current) {
+        wakeLockRef.current.release()
+          .then(() => {
+            wakeLockRef.current = null;
+          })
+          .catch(err => console.log('Error releasing wake lock:', err));
+      }
+    };
+  }, []);
 
   return {
     timeRemaining,
