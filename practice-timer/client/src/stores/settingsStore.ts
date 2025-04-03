@@ -1,9 +1,9 @@
 import { create } from 'zustand';
-import { Settings } from '@shared/schema';
+import { SettingsType } from '@/lib/timerService';
 
 interface SettingsStore {
-  settings: Settings | null;
-  setSettings: (settings: Settings) => void;
+  settings: SettingsType | null;
+  setSettings: (settings: SettingsType) => void;
 }
 
 export const useSettingsStore = create<SettingsStore>((set) => ({

@@ -1,80 +1,262 @@
-import { useQuery, useMutation } from "@tanstack/react-query";
-import { apiRequest, queryClient, getQueryFn } from "@/lib/queryClient";
-import { SettingsType, DEFAULT_SETTINGS } from "@/lib/timerService";
-import Settings from "@/components/Settings";
+import { useEffect, useState } from "react";
+import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
-import { Link } from "wouter";
+import { SettingsType, DEFAULT_SETTINGS } from "@/lib/timerService";
+import { getSettings, saveSettings } from '@/lib/localStorage';
+import { useToast } from "@/hooks/use-toast";
+import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
+import { Slider } from "@/components/ui/slider";
+import { useNotification } from "@/hooks/useNotification";
+import { useSettingsStore } from "@/stores/settingsStore";
 
-export default function SettingsPage() {
-  // Fetch user settings from the server
-  const { data: settings, isLoading: isLoadingSettings } = useQuery<SettingsType>({
-    queryKey: ['/api/settings'],
-    queryFn: getQueryFn({ on401: "returnNull" }),
-    staleTime: 0,
-    refetchOnMount: true,
-    refetchOnWindowFocus: true
-  });
+export default function Settings() {
+  const [, setLocation] = useLocation();
+  const { toast } = useToast();
+  const { requestNotificationPermission } = useNotification();
+  const { setSettings: updateGlobalSettings } = useSettingsStore();
+  const [localSettings, setLocalSettings] = useState<SettingsType>(getSettings() || DEFAULT_SETTINGS);
 
-  // Save settings mutation
-  const saveSettingsMutation = useMutation({
-    mutationFn: (newSettings: SettingsType) => 
-      apiRequest('POST', '/api/settings', newSettings),
-    onMutate: async (newSettings) => {
-      // Cancel any outgoing refetches
-      await queryClient.cancelQueries({ queryKey: ['/api/settings'] });
-
-      // Snapshot the previous value
-      const previousSettings = queryClient.getQueryData<SettingsType>(['/api/settings']);
-
-      // Optimistically update to the new value
-      queryClient.setQueryData<SettingsType>(['/api/settings'], newSettings);
-
-      // Return a context object with the snapshotted value
-      return { previousSettings };
-    },
-    onError: (err, newSettings, context) => {
-      // If the mutation fails, use the context returned from onMutate to roll back
-      if (context?.previousSettings) {
-        queryClient.setQueryData(['/api/settings'], context.previousSettings);
-      }
-    },
-    onSuccess: (data) => {
-      // Update the cache with the server response
-      queryClient.setQueryData(['/api/settings'], data);
-    },
-    onSettled: () => {
-      // Refetch to ensure we have the latest data
-      queryClient.invalidateQueries({ queryKey: ['/api/settings'] });
+  // Handle settings update
+  const handleSettingsUpdate = (newSettings: SettingsType) => {
+    setLocalSettings(newSettings);
+    saveSettings(newSettings);
+    updateGlobalSettings(newSettings);
+    
+    // Update dark mode
+    if (newSettings.darkMode) {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
     }
-  });
 
-  // Get the current settings with fallback to defaults
-  const currentSettings: SettingsType = settings || DEFAULT_SETTINGS;
+    toast({
+      title: "Settings Saved",
+      description: "Your settings have been saved successfully.",
+    });
+  };
 
   return (
     <div className="bg-background text-foreground font-sans min-h-screen">
       <div className="max-w-2xl mx-auto">
-        {/* Header */}
         <header className="p-4 bg-card shadow-sm flex items-center justify-between">
           <h1 className="text-2xl font-medium">Settings</h1>
-          <Link href="/">
-            <Button
-              variant="ghost"
-              size="icon"
-              className="text-foreground"
-            >
-              <span className="material-icons">arrow_back</span>
-            </Button>
-          </Link>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="text-foreground"
+            onClick={() => setLocation("/")}
+          >
+            <span className="material-icons">close</span>
+          </Button>
         </header>
 
-        {/* Settings Section */}
         <section className="p-6">
-          <Settings
-            settings={currentSettings}
-            isLoading={isLoadingSettings}
-            onChange={(newSettings) => saveSettingsMutation.mutate(newSettings)}
-          />
+          <div className="space-y-6">
+            {/* Sound Settings */}
+            <div>
+              <h2 className="text-lg font-medium mb-4">Sound Settings</h2>
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center">
+                    <span className="material-icons text-muted-foreground mr-3">volume_up</span>
+                    <Label htmlFor="sound-toggle">Enable Sound</Label>
+                  </div>
+                  <Switch
+                    id="sound-toggle"
+                    checked={localSettings.soundEnabled}
+                    onCheckedChange={(checked) => handleSettingsUpdate({
+                      ...localSettings,
+                      soundEnabled: checked
+                    })}
+                  />
+                </div>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center">
+                    <span className="material-icons text-muted-foreground mr-3">notifications</span>
+                    <Label htmlFor="beeps-count">Number of Beeps</Label>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      onClick={() => handleSettingsUpdate({
+                        ...localSettings,
+                        numberOfBeeps: Math.max(1, localSettings.numberOfBeeps - 1)
+                      })}
+                    >
+                      -
+                    </Button>
+                    <span className="w-8 text-center">{localSettings.numberOfBeeps}</span>
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      onClick={() => handleSettingsUpdate({
+                        ...localSettings,
+                        numberOfBeeps: Math.min(5, localSettings.numberOfBeeps + 1)
+                      })}
+                    >
+                      +
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Notification Settings */}
+            <div>
+              <h2 className="text-lg font-medium mb-4">Notification Settings</h2>
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center">
+                    <span className="material-icons text-muted-foreground mr-3">notifications_active</span>
+                    <Label htmlFor="browser-notifications-toggle">Browser Notifications</Label>
+                  </div>
+                  <Switch
+                    id="browser-notifications-toggle"
+                    checked={localSettings.browserNotificationsEnabled}
+                    onCheckedChange={async (checked) => {
+                      if (checked) {
+                        const granted = await requestNotificationPermission();
+                        if (!granted) {
+                          toast({
+                            title: "Notifications Disabled",
+                            description: "Please enable notifications in your browser settings to use this feature.",
+                            variant: "destructive",
+                          });
+                          return;
+                        }
+                      }
+                      handleSettingsUpdate({
+                        ...localSettings,
+                        browserNotificationsEnabled: checked
+                      });
+                    }}
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Timer Settings */}
+            <div>
+              <h2 className="text-lg font-medium mb-4">Timer Settings</h2>
+              <div className="space-y-6">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center">
+                    <span className="material-icons text-muted-foreground mr-3">timer</span>
+                    <Label>Work Duration</Label>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      onClick={() => handleSettingsUpdate({
+                        ...localSettings,
+                        workDuration: Math.max(5, localSettings.workDuration - 5)
+                      })}
+                    >
+                      -
+                    </Button>
+                    <span className="w-8 text-center">{localSettings.workDuration} min</span>
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      onClick={() => handleSettingsUpdate({
+                        ...localSettings,
+                        workDuration: Math.min(60, localSettings.workDuration + 5)
+                      })}
+                    >
+                      +
+                    </Button>
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center">
+                    <span className="material-icons text-muted-foreground mr-3">coffee</span>
+                    <Label>Break Duration</Label>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      onClick={() => handleSettingsUpdate({
+                        ...localSettings,
+                        breakDuration: Math.max(1, localSettings.breakDuration - 1)
+                      })}
+                    >
+                      -
+                    </Button>
+                    <span className="w-8 text-center">{localSettings.breakDuration} min</span>
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      onClick={() => handleSettingsUpdate({
+                        ...localSettings,
+                        breakDuration: Math.min(15, localSettings.breakDuration + 1)
+                      })}
+                    >
+                      +
+                    </Button>
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center">
+                    <span className="material-icons text-muted-foreground mr-3">repeat</span>
+                    <Label>Number of Iterations</Label>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      onClick={() => handleSettingsUpdate({
+                        ...localSettings,
+                        iterations: Math.max(1, localSettings.iterations - 1)
+                      })}
+                    >
+                      -
+                    </Button>
+                    <span className="w-8 text-center">{localSettings.iterations}</span>
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      onClick={() => handleSettingsUpdate({
+                        ...localSettings,
+                        iterations: Math.min(8, localSettings.iterations + 1)
+                      })}
+                    >
+                      +
+                    </Button>
+                  </div>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Number of work-break cycles to complete before reset.
+                </p>
+              </div>
+            </div>
+
+            {/* Theme Settings */}
+            <div>
+              <h2 className="text-lg font-medium mb-4">Theme Settings</h2>
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center">
+                    <span className="material-icons text-muted-foreground mr-3">dark_mode</span>
+                    <Label htmlFor="dark-mode-toggle">Dark Mode</Label>
+                  </div>
+                  <Switch
+                    id="dark-mode-toggle"
+                    checked={localSettings.darkMode}
+                    onCheckedChange={(checked) => handleSettingsUpdate({
+                      ...localSettings,
+                      darkMode: checked
+                    })}
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
         </section>
       </div>
     </div>

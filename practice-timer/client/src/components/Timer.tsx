@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { formatTime } from "@/lib/formatTime";
 
 interface TimerProps {
   timeRemaining: number;
@@ -8,54 +8,38 @@ interface TimerProps {
 }
 
 export default function Timer({ timeRemaining, totalTime, mode, isRunning }: TimerProps) {
-  const [offset, setOffset] = useState(0);
-  const radius = 45;
-  const circumference = 2 * Math.PI * radius;
+  const progress = ((totalTime - timeRemaining) / totalTime) * 100;
+  const formattedTime = formatTime(timeRemaining);
   
-  // Format time as MM:SS
-  const formatTime = (seconds: number) => {
-    const mins = Math.floor(seconds / 60);
-    const secs = seconds % 60;
-    return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
-  };
-
-  // Update progress circle
-  useEffect(() => {
-    const progress = 1 - (timeRemaining / totalTime);
-    const calculatedOffset = circumference * progress;
-    setOffset(calculatedOffset);
-  }, [timeRemaining, totalTime, circumference]);
-
   return (
-    <div className="relative w-64 h-64 flex items-center justify-center mb-8">
-      {/* SVG Circle Progress */}
-      <svg className="w-full h-full -rotate-90 absolute" viewBox="0 0 100 100">
-        {/* Background circle */}
-        <circle
-          cx="50"
-          cy="50"
-          r={radius}
-          fill="transparent"
-          stroke="#E0E0E0"
-          strokeWidth="5"
-        ></circle>
-        {/* Progress circle */}
-        <circle
-          cx="50"
-          cy="50"
-          r={radius}
-          fill="transparent"
-          stroke={mode === 'work' ? 'hsl(4, 90%, 58%)' : 'hsl(122, 39%, 49%)'}
-          strokeWidth="5"
-          strokeDasharray={circumference}
-          strokeDashoffset={offset}
-          strokeLinecap="round"
-        ></circle>
-      </svg>
-      
-      {/* Timer display */}
-      <div className="text-5xl font-bold">
-        {formatTime(timeRemaining)}
+    <div className="flex flex-col items-center justify-center space-y-4 w-full">
+      <div className="relative w-48 h-48 flex items-center justify-center">
+        {/* SVG Progress Circle */}
+        <svg className="absolute w-full h-full -rotate-90" viewBox="0 0 100 100">
+          <circle
+            className="stroke-muted fill-none"
+            cx="50"
+            cy="50"
+            r="45"
+            strokeWidth="10"
+          />
+          <circle
+            className={`${mode === 'work' ? 'stroke-red-500' : 'stroke-green-500'} fill-none transition-all duration-500 ease-in-out`}
+            cx="50"
+            cy="50"
+            r="45"
+            strokeWidth="10"
+            strokeDasharray={`${2 * Math.PI * 45}`}
+            strokeDashoffset={`${2 * Math.PI * 45 * (1 - progress / 100)}`}
+          />
+        </svg>
+        
+        {/* Timer Display */}
+        <div className="absolute inset-0 flex items-center justify-center text-center">
+          <span className="text-4xl font-bold tracking-tighter">
+            {formattedTime}
+          </span>
+        </div>
       </div>
     </div>
   );
