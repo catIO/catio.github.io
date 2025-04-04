@@ -242,7 +242,9 @@ export function useTimer({ initialSettings, onComplete }: UseTimerProps) {
       // Request wake lock
       if ('wakeLock' in navigator) {
         try {
-          wakeLockRef.current = await (navigator as any).wakeLock.request('screen');
+          // Try system wake lock first, fall back to screen wake lock if not supported
+          const wakeLockType = 'system' in (navigator as any).wakeLock ? 'system' : 'screen';
+          wakeLockRef.current = await (navigator as any).wakeLock.request(wakeLockType);
         } catch (err) {
           console.log('Error requesting wake lock:', err);
         }

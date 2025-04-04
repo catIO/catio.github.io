@@ -16,57 +16,35 @@ export default function Home() {
   const settings: SettingsType = getSettings();
   const [audioInitialized, setAudioInitialized] = useState(false);
   
-  // Initialize the timer with settings from local storage
-  const { 
-    timeRemaining, 
-    totalTime, 
-    isRunning, 
-    mode, 
-    startTimer, 
-    pauseTimer, 
-    resetTimer, 
+  // Setup notifications and toast
+  const { toast } = useToast();
+  const { playSound } = useNotification();
+
+  const {
+    timeRemaining,
+    totalTime,
+    isRunning,
+    mode,
+    startTimer,
+    pauseTimer,
+    resetTimer,
     skipTimer,
-    updateSettings,
     currentIteration,
     totalIterations
   } = useTimer({
     initialSettings: settings,
-    onComplete: async () => {
-      // Trigger notification and sound
-      if (settings?.soundEnabled) {
-        console.log('Timer completed, current settings:', settings);
-        console.log('Number of beeps setting:', settings.numberOfBeeps);
-        playSound(settings);
-      }
-      if (settings?.browserNotificationsEnabled) {
-        showNotification('Timer Complete!', {
-          body: 'Time to take a break!',
-          silent: false,
-          tag: 'timer-complete',
-          requireInteraction: true
-        });
-      }
-    }
+    onComplete: useCallback(() => {
+      console.log('Timer completed');
+      console.log('Number of beeps setting:', settings.numberOfBeeps);
+      console.log('Volume setting:', settings.volume);
+      console.log('Sound type setting:', settings.soundType);
+      playSound(settings);
+      toast({
+        title: 'Timer Complete',
+        description: 'Your timer has finished!',
+      });
+    }, [settings, toast, playSound])
   });
-
-  // Setup notifications and toast
-  const { playSound, requestNotificationPermission, showNotification } = useNotification();
-  const { toast } = useToast();
-
-  // Initialize notifications on mount
-  useEffect(() => {
-    const initNotifications = async () => {
-      try {
-        console.log('Initializing notifications...');
-        const granted = await requestNotificationPermission();
-        console.log('Notification permission status:', granted);
-      } catch (error) {
-        console.error('Error initializing notifications:', error);
-      }
-    };
-
-    initNotifications();
-  }, [requestNotificationPermission]);
 
   // Initialize audio context on first user interaction
   const initializeAudio = async () => {

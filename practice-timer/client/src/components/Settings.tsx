@@ -4,6 +4,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Slider } from "@/components/ui/slider";
 import { useState, useEffect } from "react";
 import { SettingsType } from "@/lib/timerService";
+import { SoundType } from "@/lib/soundEffects";
 import { useDarkMode } from "@/lib/darkModeStore";
 import { useNotification } from "@/hooks/useNotification";
 import { useToast } from "@/hooks/use-toast";
@@ -35,7 +36,7 @@ export default function Settings({ settings, isLoading, onChange }: SettingsProp
     
     // Play preview sound
     try {
-      await playSound('end');
+      await playSound('end', 1, newVolume, localSettings.soundType as SoundType);
     } catch (error) {
       console.error('Error playing preview sound:', error);
     }

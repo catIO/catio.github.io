@@ -6,6 +6,23 @@ let isRunning: boolean = false;
 // Log when worker is created
 console.log('Timer Worker created');
 
+function updateTimer() {
+  if (!isRunning) return;
+
+  if (timeRemaining <= 0) {
+    console.log('Worker: Timer complete');
+    isRunning = false;
+    if (timerInterval) {
+      clearInterval(timerInterval);
+      timerInterval = null;
+    }
+    self.postMessage({ type: 'COMPLETE' });
+  } else {
+    timeRemaining--;
+    self.postMessage({ type: 'TICK', payload: { timeRemaining } });
+  }
+}
+
 self.onmessage = (event) => {
   const { type, payload } = event.data;
   console.log('Worker received message:', type, payload);
@@ -24,21 +41,8 @@ self.onmessage = (event) => {
       // Send initial tick
       self.postMessage({ type: 'TICK', payload: { timeRemaining } });
       
-      // Start the timer
-      timerInterval = self.setInterval(() => {
-        if (timeRemaining <= 1) {
-          console.log('Worker: Timer complete');
-          if (timerInterval) {
-            clearInterval(timerInterval);
-            timerInterval = null;
-          }
-          isRunning = false;
-          self.postMessage({ type: 'COMPLETE' });
-        } else {
-          timeRemaining--;
-          self.postMessage({ type: 'TICK', payload: { timeRemaining } });
-        }
-      }, 1000);
+      // Start the timer with a 1-second interval
+      timerInterval = self.setInterval(updateTimer, 1000);
       
       console.log('Worker: Timer started');
       break;
@@ -70,20 +74,7 @@ self.onmessage = (event) => {
         if (timerInterval) {
           clearInterval(timerInterval);
         }
-        timerInterval = self.setInterval(() => {
-          if (timeRemaining <= 1) {
-            console.log('Worker: Timer complete');
-            if (timerInterval) {
-              clearInterval(timerInterval);
-              timerInterval = null;
-            }
-            isRunning = false;
-            self.postMessage({ type: 'COMPLETE' });
-          } else {
-            timeRemaining--;
-            self.postMessage({ type: 'TICK', payload: { timeRemaining } });
-          }
-        }, 1000);
+        timerInterval = self.setInterval(updateTimer, 1000);
       }
       break;
 

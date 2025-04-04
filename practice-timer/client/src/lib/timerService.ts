@@ -12,6 +12,8 @@ export interface SettingsType {
   darkMode: boolean;
   numberOfBeeps: number;
   mode: string;
+  volume: number;
+  soundType: string;
 }
 
 // Default settings from config file
@@ -20,8 +22,10 @@ export const DEFAULT_SETTINGS: SettingsType = {
   breakDuration: 5,
   iterations: 4,
   soundEnabled: true,
-  browserNotificationsEnabled: true,
+  browserNotificationsEnabled: false,
   darkMode: true,
   numberOfBeeps: 3,
-  mode: 'work'
+  mode: 'work',
+  volume: 50,
+  soundType: 'beep'
 };

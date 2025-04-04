@@ -1,5 +1,5 @@
 import { useCallback } from 'react';
-import { playSound as playSoundEffect, resumeAudioContext } from '@/lib/soundEffects';
+import { playSound as playSoundEffect, resumeAudioContext, SoundType } from '@/lib/soundEffects';
 import { useToast } from '@/hooks/use-toast';
 import { SettingsType } from '@/lib/timerService';
 
@@ -53,6 +53,8 @@ export function useNotification() {
     try {
       console.log('Attempting to play sound with settings:', settings);
       console.log('Number of beeps from settings:', settings?.numberOfBeeps);
+      console.log('Sound type from settings:', settings?.soundType);
+      console.log('Volume from settings:', settings?.volume);
       
       // Always try to resume audio context first
       await resumeAudioContext();
@@ -61,8 +63,13 @@ export function useNotification() {
       // Add a small delay to ensure the audio context is ready
       await new Promise(resolve => setTimeout(resolve, 100));
       
-      // Play the sound effect with the number of beeps from settings
-      await playSoundEffect('end', settings?.numberOfBeeps ?? 3);
+      // Play the sound effect with the number of beeps and sound type from settings
+      await playSoundEffect(
+        'end', 
+        settings?.numberOfBeeps ?? 3,
+        settings?.volume ?? 50,
+        (settings?.soundType as SoundType) ?? 'beep'
+      );
       console.log('Sound played successfully');
     } catch (error) {
       console.error('Error playing sound:', error);

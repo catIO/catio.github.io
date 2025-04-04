@@ -9,6 +9,15 @@ import { Switch } from "@/components/ui/switch";
 import { Slider } from "@/components/ui/slider";
 import { useNotification } from "@/hooks/useNotification";
 import { useSettingsStore } from "@/stores/settingsStore";
+import { playSound } from "@/lib/soundEffects";
+import { SoundType } from "@/lib/soundEffects";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 export default function Settings() {
   const navigate = useNavigate();
@@ -16,6 +25,8 @@ export default function Settings() {
   const { requestNotificationPermission } = useNotification();
   const { setSettings: updateGlobalSettings } = useSettingsStore();
   const [localSettings, setLocalSettings] = useState<SettingsType>(getSettings() || DEFAULT_SETTINGS);
+  const [isVolumeChanging, setIsVolumeChanging] = useState(false);
+  const [isSoundTypeChanging, setIsSoundTypeChanging] = useState(false);
 
   // Handle settings update
   const handleSettingsUpdate = (newSettings: SettingsType) => {
@@ -34,6 +45,74 @@ export default function Settings() {
       title: "Settings Saved",
       description: "Your settings have been saved successfully.",
     });
+  };
+
+  // Handle volume change with preview sound
+  const handleVolumeChange = (value: number[]) => {
+    const newVolume = value[0];
+    const newSettings = {
+      ...localSettings,
+      volume: newVolume
+    };
+    
+    // Update settings
+    setLocalSettings(newSettings);
+    
+    // Play preview sound if not already changing volume
+    if (!isVolumeChanging) {
+      setIsVolumeChanging(true);
+      playSound('end', 1, newVolume, localSettings.soundType as SoundType)
+        .then(() => {
+          // Add a small delay before allowing another preview
+          setTimeout(() => {
+            setIsVolumeChanging(false);
+          }, 500);
+        })
+        .catch(error => {
+          console.error('Error playing preview sound:', error);
+          setIsVolumeChanging(false);
+        });
+    }
+  };
+
+  // Save volume setting when slider interaction ends
+  const handleVolumeChangeComplete = () => {
+    saveSettings(localSettings);
+    updateGlobalSettings(localSettings);
+  };
+
+  // Handle sound type change with preview
+  const handleSoundTypeChange = (value: string) => {
+    const newSoundType = value as SoundType;
+    const newSettings = {
+      ...localSettings,
+      soundType: newSoundType
+    };
+    
+    // Update settings
+    setLocalSettings(newSettings);
+    
+    // Play preview sound if not already changing sound type
+    if (!isSoundTypeChanging) {
+      setIsSoundTypeChanging(true);
+      playSound('end', 1, localSettings.volume, newSoundType)
+        .then(() => {
+          // Add a small delay before allowing another preview
+          setTimeout(() => {
+            setIsSoundTypeChanging(false);
+          }, 500);
+        })
+        .catch(error => {
+          console.error('Error playing preview sound:', error);
+          setIsSoundTypeChanging(false);
+        });
+    }
+  };
+
+  // Save sound type setting when selection is made
+  const handleSoundTypeChangeComplete = () => {
+    saveSettings(localSettings);
+    updateGlobalSettings(localSettings);
   };
 
   return (
@@ -60,16 +139,50 @@ export default function Settings() {
                 <div className="flex items-center justify-between">
                   <div className="flex items-center">
                     <span className="material-icons text-muted-foreground mr-3">volume_up</span>
-                    <Label htmlFor="sound-toggle">Enable Sound</Label>
+                    <Label htmlFor="volume-slider">Volume</Label>
                   </div>
-                  <Switch
-                    id="sound-toggle"
-                    checked={localSettings.soundEnabled}
-                    onCheckedChange={(checked) => handleSettingsUpdate({
-                      ...localSettings,
-                      soundEnabled: checked
-                    })}
-                  />
+                  <div className="w-48">
+                    <Slider
+                      id="volume-slider"
+                      min={0}
+                      max={100}
+                      step={1}
+                      value={[localSettings.volume || 50]}
+                      onValueChange={handleVolumeChange}
+                      onValueCommit={handleVolumeChangeComplete}
+                    />
+                    <div className="flex justify-between text-xs text-muted-foreground mt-1">
+                      <span>Quiet</span>
+                      <span>Loud</span>
+                    </div>
+                  </div>
+                </div>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center">
+                    <span className="material-icons text-muted-foreground mr-3">music_note</span>
+                    <Label htmlFor="sound-type-select">Sound Type</Label>
+                  </div>
+                  <div className="w-48">
+                    <Select
+                      value={localSettings.soundType || 'beep'}
+                      onValueChange={handleSoundTypeChange}
+                      onOpenChange={(open) => {
+                        if (!open) {
+                          handleSoundTypeChangeComplete();
+                        }
+                      }}
+                    >
+                      <SelectTrigger id="sound-type-select">
+                        <SelectValue placeholder="Select sound type" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="beep">Beep</SelectItem>
+                        <SelectItem value="bell">Bell</SelectItem>
+                        <SelectItem value="chime">Chime</SelectItem>
+                        <SelectItem value="digital">Digital</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
                 </div>
                 <div className="flex items-center justify-between">
                   <div className="flex items-center">
@@ -99,40 +212,6 @@ export default function Settings() {
                       +
                     </Button>
                   </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Notification Settings */}
-            <div>
-              <h2 className="text-lg font-medium mb-4">Notification Settings</h2>
-              <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center">
-                    <span className="material-icons text-muted-foreground mr-3">notifications_active</span>
-                    <Label htmlFor="browser-notifications-toggle">Browser Notifications</Label>
-                  </div>
-                  <Switch
-                    id="browser-notifications-toggle"
-                    checked={localSettings.browserNotificationsEnabled}
-                    onCheckedChange={async (checked) => {
-                      if (checked) {
-                        const granted = await requestNotificationPermission();
-                        if (!granted) {
-                          toast({
-                            title: "Notifications Disabled",
-                            description: "Please enable notifications in your browser settings to use this feature.",
-                            variant: "destructive",
-                          });
-                          return;
-                        }
-                      }
-                      handleSettingsUpdate({
-                        ...localSettings,
-                        browserNotificationsEnabled: checked
-                      });
-                    }}
-                  />
                 </div>
               </div>
             </div>
