@@ -10,6 +10,8 @@ import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
 import { resumeAudioContext } from "@/lib/soundEffects";
 import { getSettings } from "@/lib/localStorage";
+import { Settings } from "lucide-react";
+import "@/assets/headerBlur.css";
 
 export default function Home() {
   // Get settings from local storage
@@ -61,13 +63,13 @@ export default function Home() {
   // Handle reset all (reset to first iteration)
   const handleResetAll = useCallback(async () => {
     await initializeAudio();
-    resetTimer(false);
+    resetTimer();
   }, [resetTimer, initializeAudio]);
 
   // Handle reset current (keep current iteration)
   const handleResetCurrent = useCallback(async () => {
     await initializeAudio();
-    resetTimer(true);
+    resetTimer();
   }, [resetTimer, initializeAudio]);
 
   // Handle skip current session
@@ -89,19 +91,21 @@ export default function Home() {
   }, [pauseTimer, initializeAudio]);
 
   return (
-    <div className="bg-background text-foreground font-sans min-h-screen">
+    <div className="text-foreground font-sans min-h-screen">
       <div className="max-w-2xl mx-auto">
-        <header className="p-4 bg-card shadow-sm flex items-center justify-between">
-          <h1 className="text-2xl font-medium">Practice Timer</h1>
-          <Link to="/settings">
-            <Button
-              variant="ghost"
-              size="icon"
-              className="text-foreground"
-            >
-              <span className="material-icons">settings</span>
-            </Button>
-          </Link>
+        <header className="relative p-4 flex items-center justify-between overflow-hidden">
+          <div className="relative z-10 flex items-center justify-between w-full">
+            <h1 className="text-2xl font-bold text-primary">Practice Timer</h1>
+            <Link to="/settings">
+              <Button
+                variant="ghost"
+                size="icon"
+                className="text-primary hover:text-primary/80"
+              >
+                <span className="material-icons">settings</span>
+              </Button>
+            </Link>
+          </div>
         </header>
 
         <main className="p-6">
