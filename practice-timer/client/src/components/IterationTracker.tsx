@@ -1,5 +1,4 @@
-import { Badge } from "@/components/ui/badge";
-import { Progress } from "@/components/ui/progress";
+import { cn } from "@/lib/utils";
 
 interface IterationTrackerProps {
   currentIteration: number;
@@ -7,34 +6,32 @@ interface IterationTrackerProps {
   mode: 'work' | 'break';
 }
 
-export default function IterationTracker({ 
-  currentIteration, 
+export default function IterationTracker({
+  currentIteration,
   totalIterations,
   mode
 }: IterationTrackerProps) {
-  const progress = (currentIteration / totalIterations) * 100;
-  
   return (
-    <div className="w-full space-y-2">
-      <div className="flex justify-between items-center">
-        <h3 className="text-sm font-medium">Iteration Progress</h3>
-        <Badge 
-          variant={mode === 'work' ? "default" : "secondary"}
-          className="text-xs"
-        >
-          {currentIteration} of {totalIterations}
-        </Badge>
+    <div className="flex flex-col items-center space-y-2">
+      <div className="text-base font-medium text-white/80">
+        {mode === 'work' ? 'Work Session' : 'Break'} •  {currentIteration} of {totalIterations}
       </div>
-      
-      <Progress value={progress} className="h-2" />
-      
-      <div className="flex justify-between text-xs text-muted-foreground">
-        <span>Current: {mode === 'work' ? 'Work' : 'Break'}</span>
-        <span>
-          {currentIteration === totalIterations && mode === 'break' 
-            ? 'Last iteration' 
-            : `${totalIterations - currentIteration} ${mode === 'work' ? 'more to go' : 'remaining'}`}
-        </span>
+      <div className="flex space-x-2">
+        {Array.from({ length: totalIterations }).map((_, index) => (
+          <div
+            key={index}
+            className={cn(
+              "w-5 h-5 rounded-full transition-all duration-300",
+              index + 1 === currentIteration
+                ? mode === 'work' 
+                  ? "bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.5)]" 
+                  : "bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.5)]"
+                : index + 1 < currentIteration
+                ? "bg-white/30"
+                : "bg-white/10"
+            )}
+          />
+        ))}
       </div>
     </div>
   );

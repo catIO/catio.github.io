@@ -18,6 +18,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Link } from "react-router-dom";
+import "@/assets/headerBlur.css";
 
 export default function Settings() {
   const navigate = useNavigate();
@@ -58,21 +60,11 @@ export default function Settings() {
     // Update settings
     setLocalSettings(newSettings);
     
-    // Play preview sound if not already changing volume
-    if (!isVolumeChanging) {
-      setIsVolumeChanging(true);
-      playSound('end', 1, newVolume, localSettings.soundType as SoundType)
-        .then(() => {
-          // Add a small delay before allowing another preview
-          setTimeout(() => {
-            setIsVolumeChanging(false);
-          }, 500);
-        })
-        .catch(error => {
-          console.error('Error playing preview sound:', error);
-          setIsVolumeChanging(false);
-        });
-    }
+    // Play preview sound immediately
+    playSound('end', 1, newVolume, localSettings.soundType as SoundType)
+      .catch(error => {
+        console.error('Error playing preview sound:', error);
+      });
   };
 
   // Save volume setting when slider interaction ends
@@ -92,21 +84,11 @@ export default function Settings() {
     // Update settings
     setLocalSettings(newSettings);
     
-    // Play preview sound if not already changing sound type
-    if (!isSoundTypeChanging) {
-      setIsSoundTypeChanging(true);
-      playSound('end', 1, localSettings.volume, newSoundType)
-        .then(() => {
-          // Add a small delay before allowing another preview
-          setTimeout(() => {
-            setIsSoundTypeChanging(false);
-          }, 500);
-        })
-        .catch(error => {
-          console.error('Error playing preview sound:', error);
-          setIsSoundTypeChanging(false);
-        });
-    }
+    // Play preview sound immediately
+    playSound('end', 1, localSettings.volume, newSoundType)
+      .catch(error => {
+        console.error('Error playing preview sound:', error);
+      });
   };
 
   // Save sound type setting when selection is made
@@ -116,18 +98,17 @@ export default function Settings() {
   };
 
   return (
-    <div className="bg-background text-foreground font-sans min-h-screen">
+    <div className="text-foreground font-sans min-h-screen">
       <div className="max-w-2xl mx-auto">
-        <header className="p-4 bg-card shadow-sm flex items-center justify-between">
-          <h1 className="text-2xl font-medium">Settings</h1>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="text-foreground"
-            onClick={() => navigate("/")}
-          >
-            <span className="material-icons">close</span>
-          </Button>
+        <header className="relative p-4 flex items-center justify-between overflow-hidden">
+          <div className="relative z-10 flex items-center justify-between w-full">
+            <h1 className="text-2xl font-bold text-primary">Settings</h1>
+            <Button variant="ghost" size="icon" asChild>
+              <Link to="/">
+                <span className="material-icons text-primary hover:text-primary/80">arrow_back</span>
+              </Link>
+            </Button>
+          </div>
         </header>
 
         <section className="p-6">
@@ -136,26 +117,25 @@ export default function Settings() {
             <div>
               <h2 className="text-lg font-medium mb-4">Sound Settings</h2>
               <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center">
-                    <span className="material-icons text-muted-foreground mr-3">volume_up</span>
-                    <Label htmlFor="volume-slider">Volume</Label>
+                <div className="flex flex-col space-y-2">
+                  <div className="flex items-center justify-between">
+                    <label htmlFor="volume" className="text-sm font-medium">
+                      Volume
+                    </label>
+                    <span className="text-sm text-muted-foreground">
+                      {localSettings.volume}%
+                    </span>
                   </div>
-                  <div className="w-48">
-                    <Slider
-                      id="volume-slider"
-                      min={0}
-                      max={100}
-                      step={1}
-                      value={[localSettings.volume || 50]}
-                      onValueChange={handleVolumeChange}
-                      onValueCommit={handleVolumeChangeComplete}
-                    />
-                    <div className="flex justify-between text-xs text-muted-foreground mt-1">
-                      <span>Quiet</span>
-                      <span>Loud</span>
-                    </div>
-                  </div>
+                  <Slider
+                    id="volume"
+                    min={0}
+                    max={100}
+                    step={1}
+                    value={[localSettings.volume]}
+                    onValueChange={handleVolumeChange}
+                    onValueCommit={handleVolumeChangeComplete}
+                    className="w-full"
+                  />
                 </div>
                 <div className="flex items-center justify-between">
                   <div className="flex items-center">
