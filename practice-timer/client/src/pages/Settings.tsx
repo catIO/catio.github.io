@@ -160,6 +160,7 @@ export default function Settings() {
                         <SelectItem value="bell">Bell</SelectItem>
                         <SelectItem value="chime">Chime</SelectItem>
                         <SelectItem value="digital">Digital</SelectItem>
+                        <SelectItem value="woodpecker">Woodpecker</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>

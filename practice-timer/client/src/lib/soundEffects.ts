@@ -4,7 +4,7 @@
 type SoundEffect = 'start' | 'end' | 'reset' | 'skip';
 
 // Sound types
-export type SoundType = 'beep' | 'bell' | 'chime' | 'digital';
+export type SoundType = 'beep' | 'bell' | 'chime' | 'digital' | 'woodpecker';
 
 // Volume control (0.0 to 1.0)
 let masterVolume = 0.5;
@@ -138,6 +138,47 @@ const generateDigitalSound = (duration: number): Float32Array => {
   return buffer;
 };
 
+// Generate woodpecker sound
+const generateWoodpeckerSound = (duration: number): Float32Array => {
+  const sampleRate = getAudioContext().sampleRate;
+  const numSamples = Math.floor(sampleRate * duration);
+  const buffer = new Float32Array(numSamples);
+  
+  // Pileated Woodpecker frequencies (deep, hollow sound)
+  const frequencies = [300, 225, 150];  // Slightly higher frequencies
+  const amplitudes = [1.0, 0.7, 0.4];   // Same harmonic balance
+  
+  // Create drumming pattern (Pileated Woodpecker style)
+  const tapDuration = 0.03;    // 30ms per tap (shorter, sharper taps)
+  const tapInterval = 0.06;    // 60ms between taps (about 16-17 beats per second)
+  const numTaps = Math.floor(duration / tapInterval);
+  
+  for (let tap = 0; tap < numTaps; tap++) {
+    const tapStart = Math.floor(tap * tapInterval * sampleRate);
+    const tapEnd = Math.floor((tap * tapInterval + tapDuration) * sampleRate);
+    
+    for (let i = tapStart; i < tapEnd; i++) {
+      if (i < numSamples) {
+        const t = (i - tapStart) / sampleRate;
+        let sample = 0;
+        
+        // Combine frequencies with sharp attack and longer decay
+        for (let j = 0; j < frequencies.length; j++) {
+          // Sharp attack, longer decay for hollow sound
+          const attack = Math.min(1, t * 100); // Very fast attack
+          const decay = Math.exp(-8 * t);      // Slower decay for resonance
+          const amplitude = amplitudes[j] * attack * decay;
+          sample += amplitude * Math.sin(2 * Math.PI * frequencies[j] * t);
+        }
+        
+        buffer[i] = sample;
+      }
+    }
+  }
+  
+  return buffer;
+};
+
 // Play a sound effect
 export const playSound = async (effect: SoundEffect, numberOfBeeps: number = 3, volume: number = 50, soundType: SoundType = 'beep'): Promise<void> => {
   try {
@@ -179,6 +220,9 @@ export const playSound = async (effect: SoundEffect, numberOfBeeps: number = 3, 
           case 'digital':
             oscillator.frequency.setValueAtTime(880, context.currentTime);
             break;
+          case 'woodpecker':
+            oscillator.frequency.setValueAtTime(300, context.currentTime); // Higher base frequency
+            break;
           case 'beep':
           default:
             oscillator.frequency.setValueAtTime(880, context.currentTime);
@@ -198,6 +242,9 @@ export const playSound = async (effect: SoundEffect, numberOfBeeps: number = 3, 
             break;
           case 'digital':
             gainNode.gain.exponentialRampToValueAtTime(0.01, context.currentTime + 0.8);
+            break;
+          case 'woodpecker':
+            gainNode.gain.exponentialRampToValueAtTime(0.01, context.currentTime + 0.2);
             break;
           case 'beep':
           default:
@@ -236,9 +283,12 @@ export const playSound = async (effect: SoundEffect, numberOfBeeps: number = 3, 
         case 'digital':
           oscillator.frequency.setValueAtTime(880, context.currentTime);
           break;
+        case 'woodpecker':
+          oscillator.frequency.setValueAtTime(300, context.currentTime); // Higher base frequency
+          break;
         case 'beep':
         default:
-          oscillator.frequency.setValueAtTime(440, context.currentTime);
+          oscillator.frequency.setValueAtTime(880, context.currentTime);
           break;
       }
       
@@ -255,6 +305,9 @@ export const playSound = async (effect: SoundEffect, numberOfBeeps: number = 3, 
           break;
         case 'digital':
           gainNode.gain.exponentialRampToValueAtTime(0.01, context.currentTime + 0.8);
+          break;
+        case 'woodpecker':
+          gainNode.gain.exponentialRampToValueAtTime(0.01, context.currentTime + 0.2);
           break;
         case 'beep':
         default:
