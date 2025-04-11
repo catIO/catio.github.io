@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { SettingsType } from '@/lib/timerService';
+import { getSettings } from '@/lib/localStorage';
 
 interface TimerState {
   timeRemaining: number;
@@ -18,7 +19,9 @@ interface TimerState {
   setSettings: (settings: SettingsType) => void;
 }
 
-const DEFAULT_WORK_TIME = 25 * 60; // 25 minutes in seconds
+// Get saved settings or use defaults
+const savedSettings = getSettings();
+const DEFAULT_WORK_TIME = savedSettings.workDuration * 60; // Convert minutes to seconds
 
 export const useTimerStore = create<TimerState>((set) => ({
   timeRemaining: DEFAULT_WORK_TIME,
@@ -26,15 +29,8 @@ export const useTimerStore = create<TimerState>((set) => ({
   isRunning: false,
   mode: 'work',
   currentIteration: 1,
-  totalIterations: 4,
-  settings: {
-    workTime: DEFAULT_WORK_TIME,
-    breakTime: 5 * 60, // 5 minutes in seconds
-    iterations: 4,
-    volume: 0.5,
-    numberOfBeeps: 3,
-    soundType: 'beep'
-  } as SettingsType,
+  totalIterations: savedSettings.iterations,
+  settings: savedSettings,
   setTimeRemaining: (time) => set({ timeRemaining: time }),
   setTotalTime: (time) => set({ totalTime: time }),
   setIsRunning: (isRunning) => set({ isRunning }),

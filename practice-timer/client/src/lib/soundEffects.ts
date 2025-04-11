@@ -1,10 +1,18 @@
 // Sound effects for the timer application
 
 // Sound effect types
-type SoundEffect = 'start' | 'end' | 'reset' | 'skip';
+export type SoundEffect = 'start' | 'end' | 'reset' | 'skip';
 
 // Sound types
 export type SoundType = 'beep' | 'bell' | 'chime' | 'digital' | 'woodpecker';
+
+// Interface for sound effect parameters
+export interface SoundEffectParams {
+  effect: SoundEffect;
+  numberOfBeeps: number;
+  volume: number;
+  soundType: SoundType;
+}
 
 // Volume control (0.0 to 1.0)
 let masterVolume = 0.5;
@@ -12,36 +20,39 @@ let masterVolume = 0.5;
 // Audio context
 let audioContext: AudioContext | null = null;
 let audioContextInitialized = false;
+let audioContextResumed = false;
 
 // Initialize audio context
 const getAudioContext = () => {
   if (!audioContext) {
-    audioContext = new AudioContext();
+    audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
   }
   return audioContext;
 };
 
 // Initialize audio context after user interaction
 export const initializeAudioContext = async () => {
-  if (!audioContextInitialized) {
-    try {
-      console.log('Initializing audio context...');
-      const context = getAudioContext();
-      console.log('Audio context state:', context.state);
-      
-      if (context.state === 'suspended') {
-        console.log('Resuming suspended audio context...');
-        await context.resume();
-        console.log('Audio context resumed successfully');
-      }
-      
-      audioContextInitialized = true;
-      console.log('Audio context initialized successfully');
-    } catch (error) {
-      console.error('Error initializing audio context:', error);
+  try {
+    console.log('Initializing audio context...');
+    const context = getAudioContext();
+    console.log('Audio context state:', context.state);
+    
+    if (context.state === 'suspended') {
+      console.log('Resuming suspended audio context...');
+      await context.resume();
+      console.log('Audio context resumed successfully');
+      audioContextResumed = true;
+    } else if (context.state === 'running') {
+      console.log('Audio context already running');
+      audioContextResumed = true;
     }
-  } else {
-    console.log('Audio context already initialized');
+    
+    audioContextInitialized = true;
+    console.log('Audio context initialized successfully');
+    return true;
+  } catch (error) {
+    console.error('Error initializing audio context:', error);
+    return false;
   }
 };
 
@@ -179,6 +190,28 @@ const generateWoodpeckerSound = (duration: number): Float32Array => {
   return buffer;
 };
 
+// Resume audio context (compatibility function)
+export const resumeAudioContext = async (): Promise<boolean> => {
+  try {
+    // Create a new audio context if we don't have one
+    if (!audioContext) {
+      audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+    }
+    
+    // Resume the audio context
+    if (audioContext.state === 'suspended') {
+      await audioContext.resume();
+      audioContextResumed = true;
+    }
+    
+    audioContextInitialized = true;
+    return true;
+  } catch (error) {
+    console.error('Error resuming audio context:', error);
+    return false;
+  }
+};
+
 // Play a sound effect
 export const playSound = async (effect: SoundEffect, numberOfBeeps: number = 3, volume: number = 50, soundType: SoundType = 'beep'): Promise<void> => {
   try {
@@ -187,9 +220,6 @@ export const playSound = async (effect: SoundEffect, numberOfBeeps: number = 3, 
     // Convert volume from 0-100 to 0-1 range with increased maximum volume
     // Apply a non-linear curve to increase volume at higher settings
     const normalizedVolume = Math.pow(volume / 100, 0.7) * 1.5;
-    
-    // Ensure audio context is initialized
-    await initializeAudioContext();
     
     // Get audio context
     const context = getAudioContext();
@@ -333,9 +363,4 @@ export const playSound = async (effect: SoundEffect, numberOfBeeps: number = 3, 
 export const setVolume = (volume: number): void => {
   masterVolume = Math.max(0, Math.min(1, volume));
   console.log(`Master volume set to ${masterVolume}`);
-};
-
-// Resume audio context (compatibility function)
-export const resumeAudioContext = async (): Promise<void> => {
-  await initializeAudioContext();
 };

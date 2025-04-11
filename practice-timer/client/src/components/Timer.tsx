@@ -47,8 +47,7 @@ export default function Timer({ timeRemaining, totalTime, mode, isRunning }: Tim
             "transition-all duration-300 ease-in-out fill-none",
             mode === 'work' 
               ? "stroke-red-500" 
-              : "stroke-green-500",
-            isRunning ? "animate-pulse" : ""
+              : "stroke-green-500"
           )}
           strokeDasharray={circumference}
           strokeDashoffset={offset}

@@ -5,6 +5,8 @@ import { useToast } from '@/hooks/use-toast';
 import { resumeAudioContext } from '@/lib/soundEffects';
 import { useTimerStore } from '@/stores/timerStore';
 import { SettingsType } from '@/lib/timerService';
+import { getSettings } from '@/lib/localStorage';
+import { getTimerWorker, addMessageHandler, removeMessageHandler, getWorkerState, updateWorkerState } from '@/lib/timerWorkerSingleton';
 
 interface WakeLock {
   released: boolean;
@@ -34,6 +36,8 @@ export function useTimer({ initialSettings, onComplete }: UseTimerProps) {
   const animationFrameRef = useRef<number>(0);
   const lastSecondRef = useRef<number>(0);
   const initializedRef = useRef(false);
+  const lastTimeRemainingRef = useRef<number>(0);
+  const timerStore = useTimerStore();
   
   const {
     timeRemaining: storeTimeRemaining,
@@ -50,18 +54,6 @@ export function useTimer({ initialSettings, onComplete }: UseTimerProps) {
     setTotalIterations: setStoreTotalIterations,
     setSettings: setStoreSettings,
   } = useTimerStore();
-
-  // Initialize settings in store only once
-  useEffect(() => {
-    if (!initializedRef.current) {
-      setStoreSettings(settings);
-      setStoreTotalIterations(settings.iterations);
-      setStoreTimeRemaining(settings.workDuration * 60);
-      setStoreTotalTime(settings.workDuration * 60);
-      setStoreCurrentIteration(1);
-      initializedRef.current = true;
-    }
-  }, []); // Empty dependency array to run only once
 
   // Complete current session and start next one
   const completeSession = useCallback(() => {
@@ -84,42 +76,232 @@ export function useTimer({ initialSettings, onComplete }: UseTimerProps) {
       setTimeRemaining(settings.workDuration * 60);
       setTotalTime(settings.workDuration * 60);
     }
-  }, [mode, settings, currentIteration, setMode, setTimeRemaining, setTotalTime, setCurrentIteration]);
+  }, [mode, settings, currentIteration, totalIterations]);
 
-  // Setup worker message handler
+  // Initialize settings in store only once
   useEffect(() => {
-    if (!workerRef.current) return;
+    if (!initializedRef.current) {
+      // Get saved settings
+      const savedSettings = getSettings();
+      console.log('Loading saved settings:', savedSettings);
+      
+      // Always initialize store settings with saved settings
+      setStoreSettings(savedSettings);
+      
+      // Calculate the correct duration from saved settings
+      const correctDuration = savedSettings.workDuration * 60;
+      console.log('Correct duration from settings:', correctDuration);
+      
+      // Always set the total time to the correct duration from settings
+      setTotalTime(correctDuration);
+      setStoreTotalTime(correctDuration);
+      
+      // Check if we have existing state in the store
+      if (storeTimeRemaining > 0) {
+        // Restore state from store but ensure total time is correct
+        setTimeRemaining(storeTimeRemaining);
+        setIsRunning(storeIsRunning);
+        setMode(storeMode);
+        setCurrentIteration(storeCurrentIteration);
+        setTotalIterations(storeTotalIterations);
+        console.log('Restored timer state from store:', {
+          timeRemaining: storeTimeRemaining,
+          totalTime: correctDuration,
+          isRunning: storeIsRunning,
+          mode: storeMode,
+          currentIteration: storeCurrentIteration,
+          totalIterations: storeTotalIterations
+        });
+      } else {
+        // Initialize with saved settings
+        setSettings(savedSettings);
+        setStoreTotalIterations(savedSettings.iterations);
+        setStoreTimeRemaining(correctDuration);
+        setStoreCurrentIteration(1);
+        setTimeRemaining(correctDuration);
+        setTotalIterations(savedSettings.iterations);
+        console.log('Initialized timer with saved settings:', savedSettings);
+      }
+      initializedRef.current = true;
+    }
+  }, []); // Empty dependency array to run only once
 
-    const handleMessage = (event: MessageEvent) => {
-      const { type, payload } = event.data;
-      switch (type) {
-        case 'TICK':
-          setTimeRemaining(payload.timeRemaining);
-          break;
-        case 'COMPLETE':
-          setIsRunning(false);
-          if (onComplete) {
-            console.log('Timer completed, calling onComplete callback');
-            onComplete();
+  // Initialize worker and settings
+  useEffect(() => {
+    let cleanup = false;
+    let isMounted = true;
+    let workerInitialized = false;
+
+    const initializeWorker = async () => {
+      try {
+        // Only initialize if we don't have a worker and haven't initialized yet
+        if (!workerRef.current && !workerInitialized) {
+          workerInitialized = true;
+          console.log('useTimer: Initializing worker');
+          const worker = await getTimerWorker();
+          if (!isMounted) {
+            console.log('useTimer: Component unmounted during initialization');
+            return;
           }
-          completeSession();
-          break;
+          workerRef.current = worker;
+          
+          // Get saved settings
+          const savedSettings = getSettings();
+          console.log('useTimer: Loading saved settings:', savedSettings);
+          
+          // Calculate the correct duration from saved settings
+          const correctDuration = savedSettings.workDuration * 60;
+          
+          // Restore state from store if it exists
+          const { timeRemaining, isRunning, mode, currentIteration, totalIterations } = timerStore;
+          if (timeRemaining > 0) {
+            console.log('useTimer: Restoring timer state from store:', {
+              timeRemaining,
+              isRunning,
+              mode,
+              currentIteration,
+              totalIterations
+            });
+            lastTimeRemainingRef.current = timeRemaining;
+            setTimeRemaining(timeRemaining);
+            setMode(mode);
+            setCurrentIteration(currentIteration);
+            setTotalIterations(totalIterations);
+            
+            // Update worker state
+            updateWorkerState(
+              timeRemaining,
+              isRunning,
+              mode,
+              currentIteration,
+              totalIterations
+            );
+          } else {
+            // Initialize with saved settings
+            console.log('useTimer: Initializing with saved duration:', correctDuration);
+            setTimeRemaining(correctDuration);
+            setTotalTime(correctDuration);
+            setStoreTimeRemaining(correctDuration);
+            setStoreTotalTime(correctDuration);
+            updateWorkerState(
+              correctDuration,
+              false,
+              'work',
+              1,
+              savedSettings.iterations
+            );
+          }
+        }
+      } catch (error) {
+        console.error('useTimer: Failed to initialize worker:', error);
       }
     };
 
-    workerRef.current.addEventListener('message', handleMessage);
-    return () => {
-      workerRef.current?.removeEventListener('message', handleMessage);
-    };
-  }, [completeSession, onComplete]);
+    initializeWorker();
 
-  // Initialize worker
-  useEffect(() => {
-    workerRef.current = new Worker(new URL('../workers/timerWorker.ts', import.meta.url));
     return () => {
-      workerRef.current?.terminate();
+      cleanup = true;
+      isMounted = false;
     };
-  }, []);
+  }, [onComplete, completeSession, timerStore]);
+
+  // Handle cleanup when component unmounts
+  useEffect(() => {
+    return () => {
+      // Only pause the timer if it's running when the component unmounts
+      if (workerRef.current && isRunning) {
+        console.log('useTimer: Pausing timer on unmount');
+        workerRef.current.postMessage({ type: 'PAUSE' });
+        setIsRunning(false);
+        setStoreIsRunning(false);
+      }
+    };
+  }, [isRunning, setIsRunning, setStoreIsRunning]);
+
+  // Set up message handler for worker
+  useEffect(() => {
+    let messageHandler: ((event: MessageEvent) => void) | null = null;
+
+    if (workerRef.current) {
+      // Add message handler for TICK and COMPLETE messages
+      messageHandler = (event: MessageEvent) => {
+        const { type, payload } = event.data;
+        if (type === 'TICK') {
+          console.log('useTimer: Received TICK message:', payload);
+          setTimeRemaining(payload.timeRemaining);
+          setStoreTimeRemaining(payload.timeRemaining);
+        } else if (type === 'COMPLETE') {
+          console.log('useTimer: Received COMPLETE message');
+          setIsRunning(false);
+          setStoreIsRunning(false);
+          
+          // Call onComplete callback if provided
+          if (onComplete) {
+            console.log('useTimer: Calling onComplete callback');
+            onComplete();
+          }
+          
+          // Complete the current session
+          completeSession();
+        }
+      };
+      
+      addMessageHandler(messageHandler);
+    }
+
+    return () => {
+      // Remove message handler if it exists
+      if (messageHandler) {
+        removeMessageHandler(messageHandler);
+      }
+    };
+  }, [workerRef.current, onComplete, completeSession, setIsRunning, setStoreIsRunning]);
+
+  // Pause timer
+  const pauseTimer = useCallback(() => {
+    if (!workerRef.current || !isRunning) return;
+
+    // Update local state first
+    setIsRunning(false);
+    setStoreIsRunning(false);
+    
+    // Then pause the worker
+    workerRef.current.postMessage({ type: 'PAUSE' });
+    
+    console.log('Timer paused with time remaining:', timeRemaining);
+  }, [timeRemaining, isRunning, setIsRunning, setStoreIsRunning]);
+
+  // Handle settings changes
+  useEffect(() => {
+    if (!workerRef.current) return;
+    
+    // Get the latest settings
+    const savedSettings = getSettings();
+    console.log('useTimer: Settings changed, using saved settings:', savedSettings);
+    
+    // Update store settings
+    setStoreSettings(savedSettings);
+    
+    // Update worker state with saved settings
+    const newDuration = savedSettings.workDuration * 60;
+    console.log('useTimer: Updating worker state with saved duration:', newDuration);
+    
+    // Update worker state without resetting timer
+    updateWorkerState(
+      newDuration,
+      false,
+      'work',
+      1,
+      savedSettings.iterations
+    );
+  }, [settings]);
+
+  // Update worker state when timer state changes
+  useEffect(() => {
+    if (workerRef.current) {
+      updateWorkerState(timeRemaining, isRunning);
+    }
+  }, [timeRemaining, isRunning]);
 
   // Initialize timer with current settings
   const initializeTimer = useCallback((currentMode: 'work' | 'break', currentSettings: typeof settings) => {
@@ -153,14 +335,6 @@ export function useTimer({ initialSettings, onComplete }: UseTimerProps) {
       initializeTimer('work', newSettings);
     }
   }, [mode, initializeTimer]);
-
-  // Pause timer
-  const pauseTimer = useCallback(() => {
-    if (!workerRef.current) return;
-
-    workerRef.current.postMessage({ type: 'PAUSE' });
-    setIsRunning(false);
-  }, []);
 
   // Reset timer
   const resetTimer = useCallback(() => {
@@ -200,7 +374,42 @@ export function useTimer({ initialSettings, onComplete }: UseTimerProps) {
   // Start timer
   const startTimer = useCallback(async () => {
     try {
-      if (!workerRef.current) return;
+      // Initialize audio context first
+      try {
+        await resumeAudioContext();
+        console.log('Audio context initialized and resumed successfully');
+      } catch (error) {
+        console.error('Error initializing audio context:', error);
+        // Continue even if audio fails - we don't want to block the timer
+      }
+
+      // Ensure worker is initialized
+      if (!workerRef.current) {
+        console.log('Worker not initialized, initializing now...');
+        try {
+          workerRef.current = await getTimerWorker();
+          if (!workerRef.current) {
+            throw new Error('Failed to initialize worker');
+          }
+          
+          // Update worker state
+          updateWorkerState(
+            timeRemaining,
+            false,
+            mode,
+            currentIteration,
+            totalIterations
+          );
+        } catch (error) {
+          console.error('Error initializing worker:', error);
+          toast({
+            title: "Error",
+            description: "Failed to initialize timer. Please try again.",
+            variant: "destructive",
+          });
+          return;
+        }
+      }
 
       // Request wake lock
       if ('wakeLock' in navigator) {
@@ -213,11 +422,21 @@ export function useTimer({ initialSettings, onComplete }: UseTimerProps) {
         }
       }
 
+      // Update local state first
+      setIsRunning(true);
+      setStoreIsRunning(true);
+      
+      // Then start the worker
+      console.log('Starting timer with time remaining:', timeRemaining);
       workerRef.current.postMessage({ 
         type: 'START',
-        payload: { timeRemaining }
+        payload: { 
+          timeRemaining,
+          mode,
+          currentIteration,
+          totalIterations
+        }
       });
-      setIsRunning(true);
     } catch (error) {
       console.error('Error starting timer:', error);
       toast({
@@ -226,7 +445,7 @@ export function useTimer({ initialSettings, onComplete }: UseTimerProps) {
         variant: "destructive",
       });
     }
-  }, [toast, timeRemaining]);
+  }, [timeRemaining, mode, currentIteration, totalIterations, onComplete, completeSession, toast]);
 
   // Cleanup wake lock on unmount
   useEffect(() => {

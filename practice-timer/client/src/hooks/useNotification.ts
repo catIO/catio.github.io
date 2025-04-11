@@ -1,5 +1,5 @@
 import { useCallback } from 'react';
-import { playSound as playSoundEffect, resumeAudioContext, SoundType } from '@/lib/soundEffects';
+import { playSound as playSoundEffect, resumeAudioContext, SoundType, SoundEffect } from '@/lib/soundEffects';
 import { useToast } from '@/hooks/use-toast';
 import { SettingsType } from '@/lib/timerService';
 
@@ -49,35 +49,17 @@ export function useNotification() {
     }
   }, [requestNotificationPermission]);
 
-  const playSound = useCallback(async (settings?: SettingsType) => {
+  const playSound = useCallback(async (settings: { numberOfBeeps: number; volume: number; soundType: string }) => {
     try {
-      console.log('Attempting to play sound with settings:', settings);
-      console.log('Number of beeps from settings:', settings?.numberOfBeeps);
-      console.log('Sound type from settings:', settings?.soundType);
-      console.log('Volume from settings:', settings?.volume);
-      
-      // Always try to resume audio context first
-      await resumeAudioContext();
-      console.log('Audio context resumed');
-      
-      // Add a small delay to ensure the audio context is ready
-      await new Promise(resolve => setTimeout(resolve, 100));
-      
-      // Play the sound effect with the number of beeps and sound type from settings
-      await playSoundEffect(
-        'end', 
-        settings?.numberOfBeeps ?? 3,
-        settings?.volume ?? 50,
-        (settings?.soundType as SoundType) ?? 'beep'
-      );
-      console.log('Sound played successfully');
+      console.log('Playing sound with settings:', settings);
+      await playSoundEffect('end', settings.numberOfBeeps, settings.volume, settings.soundType as SoundType);
     } catch (error) {
       console.error('Error playing sound:', error);
-      // Show a toast notification to inform the user about the audio issue
       toast({
         title: "Sound Playback Issue",
-        description: "Please click anywhere on the page to enable sound notifications.",
+        description: "Failed to play sound. Please check your browser's audio settings.",
         variant: "destructive",
+        duration: 5000,
       });
     }
   }, [toast]);

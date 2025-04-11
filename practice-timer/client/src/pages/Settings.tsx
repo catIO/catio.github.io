@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Slider } from "@/components/ui/slider";
 import { useNotification } from "@/hooks/useNotification";
-import { useSettingsStore } from "@/stores/settingsStore";
+import { useSettingsStore } from '@/stores/settingsStore';
 import { playSound } from "@/lib/soundEffects";
 import { SoundType } from "@/lib/soundEffects";
 import {
@@ -20,6 +20,8 @@ import {
 } from "@/components/ui/select";
 import { Link } from "react-router-dom";
 import "@/assets/headerBlur.css";
+import { useTimerStore } from '@/stores/timerStore';
+import { updateWorkerState } from '@/lib/timerWorkerSingleton';
 
 export default function Settings() {
   const navigate = useNavigate();
@@ -31,9 +33,14 @@ export default function Settings() {
   const [isSoundTypeChanging, setIsSoundTypeChanging] = useState(false);
 
   // Handle settings update
-  const handleSettingsUpdate = (newSettings: SettingsType) => {
+  const handleSettingsUpdate = (updates: Partial<SettingsType>) => {
+    const newSettings = { ...localSettings, ...updates };
     setLocalSettings(newSettings);
+    
+    // Save to localStorage first
     saveSettings(newSettings);
+    
+    // Then update global settings
     updateGlobalSettings(newSettings);
     
     // Update dark mode
@@ -41,6 +48,46 @@ export default function Settings() {
       document.documentElement.classList.add('dark');
     } else {
       document.documentElement.classList.remove('dark');
+    }
+
+    // If timer duration settings changed, reset the timer
+    if (
+      updates.workDuration !== undefined ||
+      updates.breakDuration !== undefined ||
+      updates.iterations !== undefined
+    ) {
+      console.log('Settings: Timer duration changed, resetting timer');
+      const { setTimeRemaining, setTotalTime, setMode, setCurrentIteration, setTotalIterations, setSettings: setStoreSettings } = useTimerStore.getState();
+      
+      // Update store settings first
+      setStoreSettings(newSettings);
+      
+      // Calculate new duration in seconds
+      const newDuration = newSettings.workDuration * 60;
+      
+      // Then update timer state
+      setTimeRemaining(newDuration);
+      setTotalTime(newDuration);
+      setMode('work');
+      setCurrentIteration(1);
+      setTotalIterations(newSettings.iterations);
+      
+      // Update worker state with the same values
+      updateWorkerState(
+        newDuration,
+        false, // isRunning
+        'work',
+        1,
+        newSettings.iterations
+      );
+      
+      console.log('Settings: Updated timer state:', {
+        timeRemaining: newDuration,
+        totalTime: newDuration,
+        mode: 'work',
+        currentIteration: 1,
+        totalIterations: newSettings.iterations
+      });
     }
 
     toast({

@@ -22,6 +22,35 @@ export default function Home() {
   const { toast } = useToast();
   const { playSound } = useNotification();
 
+  // Initialize audio context on user interaction
+  const initializeAudio = async () => {
+    if (!audioInitialized) {
+      try {
+        const resumed = await resumeAudioContext();
+        if (resumed) {
+          setAudioInitialized(true);
+          console.log('Audio context initialized on user interaction');
+        } else {
+          console.error('Failed to initialize audio context on user interaction');
+          toast({
+            title: "Audio Initialization Failed",
+            description: "Please ensure your browser allows audio playback for this site.",
+            variant: "destructive",
+            duration: 5000,
+          });
+        }
+      } catch (error) {
+        console.error('Error initializing audio:', error);
+        toast({
+          title: "Audio Initialization Failed",
+          description: "Please ensure your browser allows audio playback for this site.",
+          variant: "destructive",
+          duration: 5000,
+        });
+      }
+    }
+  };
+
   const {
     timeRemaining,
     totalTime,
@@ -35,12 +64,17 @@ export default function Home() {
     totalIterations
   } = useTimer({
     initialSettings: settings,
-    onComplete: useCallback(() => {
+    onComplete: useCallback(async () => {
       console.log('Timer completed');
-      console.log('Number of beeps setting:', settings.numberOfBeeps);
-      console.log('Volume setting:', settings.volume);
-      console.log('Sound type setting:', settings.soundType);
-      playSound(settings);
+      console.log('Settings for sound:', {
+        numberOfBeeps: settings.numberOfBeeps,
+        volume: settings.volume,
+        soundType: settings.soundType
+      });
+      
+      // Play the completion sound
+      await playSound(settings);
+      
       toast({
         title: 'Timer Complete',
         description: 'Your timer has finished!',
@@ -48,47 +82,33 @@ export default function Home() {
     }, [settings, toast, playSound])
   });
 
-  // Initialize audio context on first user interaction
-  const initializeAudio = async () => {
-    if (!audioInitialized) {
-      try {
-        await resumeAudioContext();
-        setAudioInitialized(true);
-      } catch (error) {
-        console.error('Error initializing audio:', error);
-      }
-    }
-  };
-
   // Handle reset all (reset to first iteration)
-  const handleResetAll = useCallback(async () => {
-    await initializeAudio();
+  const handleResetAll = useCallback(() => {
     resetTimer();
-  }, [resetTimer, initializeAudio]);
+  }, [resetTimer]);
 
   // Handle reset current (keep current iteration)
-  const handleResetCurrent = useCallback(async () => {
-    await initializeAudio();
+  const handleResetCurrent = useCallback(() => {
     resetTimer();
-  }, [resetTimer, initializeAudio]);
+  }, [resetTimer]);
 
   // Handle skip current session
-  const handleSkip = useCallback(async () => {
-    await initializeAudio();
+  const handleSkip = useCallback(() => {
     skipTimer();
-  }, [skipTimer, initializeAudio]);
+  }, [skipTimer]);
 
   // Handle start timer
   const handleStart = useCallback(async () => {
+    // Initialize audio context first
     await initializeAudio();
+    // Then start the timer
     startTimer();
   }, [startTimer, initializeAudio]);
 
   // Handle pause timer
-  const handlePause = useCallback(async () => {
-    await initializeAudio();
+  const handlePause = useCallback(() => {
     pauseTimer();
-  }, [pauseTimer, initializeAudio]);
+  }, [pauseTimer]);
 
   return (
     <div className="text-foreground font-sans min-h-screen">
