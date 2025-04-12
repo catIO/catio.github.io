@@ -6,7 +6,7 @@ import { resumeAudioContext } from '@/lib/soundEffects';
 import { useTimerStore } from '@/stores/timerStore';
 import { SettingsType } from '@/lib/timerService';
 import { getSettings } from '@/lib/localStorage';
-import { getTimerWorker, addMessageHandler, removeMessageHandler, getWorkerState, updateWorkerState } from '@/lib/timerWorkerSingleton';
+import { getTimerWorker, addMessageHandler, removeMessageHandler, updateWorkerState } from '@/lib/timerWorkerSingleton';
 
 interface WakeLock {
   released: boolean;
@@ -59,24 +59,70 @@ export function useTimer({ initialSettings, onComplete }: UseTimerProps) {
   const completeSession = useCallback(() => {
     if (mode === 'work') {
       // After work session, go to break mode for the same iteration
-      setMode('break');
-      setTimeRemaining(settings.breakDuration * 60);
-      setTotalTime(settings.breakDuration * 60);
+      const newMode = 'break';
+      const newTimeRemaining = settings.breakDuration * 60;
+      
+      // Update local state
+      setMode(newMode);
+      setTimeRemaining(newTimeRemaining);
+      setTotalTime(newTimeRemaining);
+      setIsRunning(false);
+      
+      // Update store state
+      setStoreMode(newMode);
+      setStoreTimeRemaining(newTimeRemaining);
+      setStoreTotalTime(newTimeRemaining);
+      setStoreIsRunning(false);
+      
+      // Update worker state
+      if (workerRef.current) {
+        workerRef.current.postMessage({
+          type: 'UPDATE_MODE',
+          payload: {
+            mode: newMode,
+            timeRemaining: newTimeRemaining,
+            currentIteration,
+            totalIterations,
+            isRunning: false
+          }
+        });
+      }
     } else {
       // After break session, increment iteration and go to work mode
       const nextIteration = currentIteration + 1;
-      if (nextIteration > totalIterations) {
-        // If we've completed all iterations, reset to the first iteration
-        setCurrentIteration(1);
-      } else {
-        // Otherwise, move to the next iteration
-        setCurrentIteration(nextIteration);
+      const newIteration = nextIteration > totalIterations ? 1 : nextIteration;
+      const newMode = 'work';
+      const newTimeRemaining = settings.workDuration * 60;
+      
+      // Update local state
+      setCurrentIteration(newIteration);
+      setMode(newMode);
+      setTimeRemaining(newTimeRemaining);
+      setTotalTime(newTimeRemaining);
+      setIsRunning(false);
+      
+      // Update store state
+      setStoreCurrentIteration(newIteration);
+      setStoreMode(newMode);
+      setStoreTimeRemaining(newTimeRemaining);
+      setStoreTotalTime(newTimeRemaining);
+      setStoreIsRunning(false);
+      
+      // Update worker state
+      if (workerRef.current) {
+        workerRef.current.postMessage({
+          type: 'UPDATE_MODE',
+          payload: {
+            mode: newMode,
+            timeRemaining: newTimeRemaining,
+            currentIteration: newIteration,
+            totalIterations,
+            isRunning: false
+          }
+        });
       }
-      setMode('work');
-      setTimeRemaining(settings.workDuration * 60);
-      setTotalTime(settings.workDuration * 60);
     }
-  }, [mode, settings, currentIteration, totalIterations]);
+  }, [mode, settings, currentIteration, totalIterations, setMode, setTimeRemaining, setTotalTime, setIsRunning, setStoreMode, setStoreTimeRemaining, setStoreTotalTime, setStoreIsRunning, setCurrentIteration, setStoreCurrentIteration]);
 
   // Initialize settings in store only once
   useEffect(() => {
@@ -368,7 +414,11 @@ export function useTimer({ initialSettings, onComplete }: UseTimerProps) {
 
   // Initialize timer when mode changes
   useEffect(() => {
-    initializeTimer(mode, settings);
+    // Only initialize timer with new duration if we're not restoring from store
+    // This prevents resetting the timer when navigating back from settings
+    if (lastTimeRemainingRef.current === 0) {
+      initializeTimer(mode, settings);
+    }
   }, [mode, settings, initializeTimer]);
 
   // Start timer

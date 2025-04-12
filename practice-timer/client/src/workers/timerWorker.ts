@@ -1,105 +1,275 @@
 // Timer Web Worker
-let timerInterval: ReturnType<typeof setInterval> | null = null;
-let timeRemaining = 0;
-let isRunning = false;
-let workerId = Math.random().toString(36).substring(7);
-let mode: 'work' | 'break' = 'work';
-let currentIteration = 1;
-let totalIterations = 4;
+import { TimerState } from '../lib/timerWorkerSingleton';
+
+let workerId: string | null = null;
+let timerInterval: number | null = null;
+
+// Worker state
+let state: TimerState = {
+  timeRemaining: 0,
+  isRunning: false,
+  mode: 'work',
+  currentIteration: 1,
+  totalIterations: 4,
+  settings: {
+    workDuration: 25 * 60,
+    breakDuration: 5 * 60,
+    iterations: 4,
+    soundEnabled: true,
+    browserNotificationsEnabled: true,
+    darkMode: false,
+    numberOfBeeps: 3,
+    mode: 'work',
+    volume: 0.5,
+    soundType: 'beep'
+  }
+};
 
 // Log when worker is created
 console.log('Timer Worker created');
 
 function updateTimer() {
-  console.log('Worker: updateTimer called, timeRemaining:', timeRemaining);
-  if (timeRemaining > 0) {
-    timeRemaining--;
-    console.log('Worker: Sending TICK with timeRemaining:', timeRemaining);
-    self.postMessage({ type: 'TICK', payload: { timeRemaining } });
+  console.log('Worker: updateTimer called, timeRemaining:', state.timeRemaining);
+  if (state.timeRemaining > 0) {
+    state.timeRemaining--;
+    console.log('Worker: Sending TICK with timeRemaining:', state.timeRemaining);
+    self.postMessage({ 
+      type: 'TICK', 
+      payload: state
+    });
   } else {
     console.log('Worker: Timer complete');
-    isRunning = false;
+    state.isRunning = false;
     if (timerInterval) {
-      clearInterval(timerInterval);
+      self.clearInterval(timerInterval);
       timerInterval = null;
     }
-    self.postMessage({ type: 'COMPLETE' });
+    self.postMessage({ 
+      type: 'COMPLETE',
+      payload: state
+    });
   }
 }
 
-self.onmessage = (e: MessageEvent) => {
-  console.log('Worker: Received message:', e.data);
-  const { type, payload } = e.data;
+// Handle messages from the main thread
+self.addEventListener('message', (event: MessageEvent) => {
+  const { type, payload } = event.data;
+  console.log('Worker received message:', type, payload);
 
   switch (type) {
     case 'INIT':
       console.log('Worker: Initializing with settings:', payload);
       workerId = payload.workerId;
-      timeRemaining = payload.timeRemaining || 0;
-      isRunning = false;
-      if (timerInterval) {
-        clearInterval(timerInterval);
-        timerInterval = null;
-      }
-      // Send initialization complete message
-      self.postMessage({ 
-        type: 'INIT_COMPLETE', 
-        payload: { workerId } 
+      self.postMessage({
+        type: 'INIT_COMPLETE',
+        payload: {
+          workerId,
+          ...state
+        }
       });
       break;
 
     case 'START':
-      console.log('Worker: Starting timer with timeRemaining:', payload.timeRemaining);
-      timeRemaining = payload.timeRemaining;
-      isRunning = true;
-      if (timerInterval) {
-        clearInterval(timerInterval);
-      }
-      timerInterval = setInterval(updateTimer, 1000);
+      console.log('Worker: Starting timer');
+      startTimer();
       break;
 
     case 'PAUSE':
       console.log('Worker: Pausing timer');
-      isRunning = false;
-      if (timerInterval) {
-        clearInterval(timerInterval);
-        timerInterval = null;
-      }
+      pauseTimer();
       break;
 
     case 'RESET':
       console.log('Worker: Resetting timer');
-      timeRemaining = payload.timeRemaining || 0;
-      isRunning = false;
-      if (timerInterval) {
-        clearInterval(timerInterval);
-        timerInterval = null;
-      }
-      break;
-
-    case 'UPDATE_TIME':
-      console.log('Worker: Updating time to:', payload.timeRemaining);
-      timeRemaining = payload.timeRemaining;
+      resetTimer();
       break;
 
     case 'UPDATE_STATE':
       console.log('Worker: Updating state:', payload);
-      if (payload.timeRemaining !== undefined) timeRemaining = payload.timeRemaining;
-      if (payload.isRunning !== undefined) isRunning = payload.isRunning;
-      if (payload.mode) mode = payload.mode;
-      if (payload.currentIteration) currentIteration = payload.currentIteration;
-      if (payload.totalIterations) totalIterations = payload.totalIterations;
-      
-      // If timer is running, restart the interval
-      if (isRunning && !timerInterval) {
-        timerInterval = setInterval(updateTimer, 1000);
-      } else if (!isRunning && timerInterval) {
-        clearInterval(timerInterval);
-        timerInterval = null;
-      }
+      updateState(payload);
+      break;
+
+    case 'UPDATE_SETTINGS':
+      console.log('Worker: Updating settings:', payload);
+      updateSettings(payload);
+      break;
+
+    case 'UPDATE_TIME':
+      console.log('Worker: Updating time to:', payload.timeRemaining);
+      updateTime(payload.timeRemaining);
+      break;
+
+    case 'UPDATE_MODE':
+      console.log('Worker: Updating mode to:', payload.mode);
+      updateMode(payload.mode, payload.timeRemaining, payload.currentIteration, payload.totalIterations);
       break;
 
     default:
       console.warn('Worker: Unknown message type:', type);
   }
-}; 
+
+  // Log current state after handling message
+  console.log('Worker: Current state:', state);
+});
+
+// Update the worker's state
+function updateState(newState: Partial<TimerState>) {
+  console.log('Worker: Updating state:', newState);
+  
+  // Only update the properties that are provided in newState
+  if (newState.timeRemaining !== undefined) {
+    state.timeRemaining = newState.timeRemaining;
+  }
+  
+  if (newState.isRunning !== undefined) {
+    state.isRunning = newState.isRunning;
+  }
+  
+  if (newState.mode !== undefined) {
+    state.mode = newState.mode;
+  }
+  
+  if (newState.currentIteration !== undefined) {
+    state.currentIteration = newState.currentIteration;
+  }
+  
+  if (newState.totalIterations !== undefined) {
+    state.totalIterations = newState.totalIterations;
+  }
+  
+  if (newState.settings !== undefined) {
+    state.settings = {
+      ...state.settings,
+      ...newState.settings
+    };
+  }
+  
+  // Send updated state back to main thread
+  self.postMessage({
+    type: 'STATE_UPDATED',
+    payload: state
+  });
+}
+
+// Update the timer mode
+function updateMode(mode: 'work' | 'break', timeRemaining: number, currentIteration: number, totalIterations: number) {
+  console.log('Worker: Updating mode with:', { mode, timeRemaining, currentIteration, totalIterations });
+  
+  // Update state
+  state = {
+    ...state,
+    mode,
+    timeRemaining,
+    currentIteration,
+    totalIterations,
+    isRunning: false
+  };
+  
+  // Clear any existing interval
+  if (timerInterval) {
+    self.clearInterval(timerInterval);
+    timerInterval = null;
+  }
+  
+  // Send updated state back to main thread
+  self.postMessage({
+    type: 'UPDATE_MODE',
+    payload: state
+  });
+  
+  console.log('Worker: State updated to:', state);
+}
+
+// Update the timer
+function updateTime(timeRemaining: number) {
+  state.timeRemaining = timeRemaining;
+  // Send updated state back to main thread
+  self.postMessage({
+    type: 'TICK',
+    payload: state
+  });
+}
+
+// Start the timer
+function startTimer() {
+  if (!state.isRunning) {
+    state.isRunning = true;
+    timerInterval = self.setInterval(() => {
+      if (state.timeRemaining > 0) {
+        state.timeRemaining--;
+        self.postMessage({ type: 'TICK', payload: { timeRemaining: state.timeRemaining } });
+      } else {
+        completeTimer();
+      }
+    }, 1000);
+  }
+}
+
+// Pause the timer
+function pauseTimer() {
+  if (state.isRunning) {
+    state.isRunning = false;
+    if (timerInterval) {
+      self.clearInterval(timerInterval);
+      timerInterval = null;
+    }
+    self.postMessage({ type: 'PAUSED', payload: { timeRemaining: state.timeRemaining } });
+  }
+}
+
+// Reset the timer
+function resetTimer() {
+  pauseTimer();
+  state.timeRemaining = state.mode === 'work' ? state.settings.workDuration : state.settings.breakDuration;
+  self.postMessage({ type: 'RESET', payload: { timeRemaining: state.timeRemaining } });
+}
+
+// Complete the timer
+function completeTimer() {
+  pauseTimer();
+  
+  // Play sound if enabled
+  if (state.settings.soundEnabled) {
+    self.postMessage({ type: 'PLAY_SOUND', payload: { 
+      numberOfBeeps: state.settings.numberOfBeeps,
+      volume: state.settings.volume,
+      soundType: state.settings.soundType
+    }});
+  }
+
+  // Show notification if enabled
+  if (state.settings.browserNotificationsEnabled) {
+    self.postMessage({ type: 'SHOW_NOTIFICATION', payload: { 
+      title: state.mode === 'work' ? 'Work Time Complete!' : 'Break Time Complete!',
+      body: state.mode === 'work' ? 'Time for a break!' : 'Time to get back to work!'
+    }});
+  }
+
+  // Update iteration count
+  if (state.mode === 'work') {
+    state.currentIteration++;
+  }
+
+  // Switch modes
+  state.mode = state.mode === 'work' ? 'break' : 'work';
+  state.timeRemaining = state.mode === 'work' ? state.settings.workDuration : state.settings.breakDuration;
+
+  // Check if all iterations are complete
+  if (state.currentIteration > state.totalIterations) {
+    self.postMessage({ type: 'COMPLETE', payload: { 
+      mode: state.mode,
+      currentIteration: state.currentIteration,
+      totalIterations: state.totalIterations
+    }});
+    return;
+  }
+
+  // Start the next timer
+  startTimer();
+}
+
+// Update settings
+function updateSettings(settings: Partial<TimerState['settings']>) {
+  state.settings = { ...state.settings, ...settings };
+  self.postMessage({ type: 'SETTINGS_UPDATED', payload: state.settings });
+} 

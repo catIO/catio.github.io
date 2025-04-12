@@ -1,19 +1,36 @@
 // Timer Worker Singleton
 // This module ensures only one worker instance exists throughout the application
 
+import { create } from 'zustand';
+import { getSettings } from './localStorage';
+
+// Types
+export interface TimerState {
+  timeRemaining: number;
+  isRunning: boolean;
+  mode: 'work' | 'break';
+  currentIteration: number;
+  totalIterations: number;
+  settings: {
+    workDuration: number;
+    breakDuration: number;
+    iterations: number;
+    soundEnabled: boolean;
+    browserNotificationsEnabled: boolean;
+    darkMode: boolean;
+    numberOfBeeps: number;
+    mode: 'work' | 'break';
+    volume: number;
+    soundType: string;
+  };
+}
+
 // Private variables
 let workerInstance: Worker | null = null;
 let workerId: string | null = null;
 let initializationPromise: Promise<Worker> | null = null;
 let isInitialized = false;
 let messageHandlers: ((event: MessageEvent) => void)[] = [];
-let workerState = {
-  timeRemaining: 0,
-  isRunning: false,
-  mode: 'work' as 'work' | 'break',
-  currentIteration: 1,
-  totalIterations: 4
-};
 
 // Create a new worker instance
 function createWorker(): Promise<Worker> {
@@ -113,15 +130,6 @@ function handleGlobalMessage(event: MessageEvent) {
   const { type, payload } = event.data;
   console.log('Singleton received message:', type, payload);
   
-  // Update our internal state
-  if (type === 'TICK') {
-    workerState.timeRemaining = payload.timeRemaining;
-    console.log('Singleton updated time remaining:', workerState.timeRemaining);
-  } else if (type === 'COMPLETE') {
-    workerState.isRunning = false;
-    console.log('Singleton updated isRunning:', workerState.isRunning);
-  }
-  
   // Forward the message to all registered handlers
   messageHandlers.forEach(handler => {
     try {
@@ -147,26 +155,32 @@ export function removeMessageHandler(handler: (event: MessageEvent) => void): vo
   }
 }
 
-// Get the current worker state
-export function getWorkerState() {
-  return { ...workerState };
-}
-
 // Update the worker state
-export function updateWorkerState(timeRemaining: number, isRunning: boolean, mode?: 'work' | 'break', currentIteration?: number, totalIterations?: number) {
-  workerState.timeRemaining = timeRemaining;
-  workerState.isRunning = isRunning;
-  if (mode) workerState.mode = mode;
-  if (currentIteration) workerState.currentIteration = currentIteration;
-  if (totalIterations) workerState.totalIterations = totalIterations;
-  
-  console.log('Singleton updated worker state:', workerState);
+export function updateWorkerState(
+  timeRemaining: number,
+  isRunning: boolean,
+  mode?: 'work' | 'break',
+  currentIteration?: number,
+  totalIterations?: number
+) {
+  console.log('Singleton updating worker state:', timeRemaining);
   
   // Update worker if it exists
   if (workerInstance && isInitialized) {
+    // Create a state object with only the provided parameters
+    const stateUpdate: Partial<TimerState> = {
+      timeRemaining,
+      isRunning
+    };
+    
+    // Only add optional parameters if they are provided
+    if (mode !== undefined) stateUpdate.mode = mode;
+    if (currentIteration !== undefined) stateUpdate.currentIteration = currentIteration;
+    if (totalIterations !== undefined) stateUpdate.totalIterations = totalIterations;
+    
     workerInstance.postMessage({
       type: 'UPDATE_STATE',
-      payload: workerState
+      payload: stateUpdate
     });
   }
 }
@@ -182,13 +196,6 @@ export function terminateTimerWorker(): void {
     initializationPromise = null;
     isInitialized = false;
     messageHandlers = [];
-    workerState = {
-      timeRemaining: 0,
-      isRunning: false,
-      mode: 'work',
-      currentIteration: 1,
-      totalIterations: 4
-    };
   }
 }
 
