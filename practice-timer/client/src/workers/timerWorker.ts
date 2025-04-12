@@ -245,13 +245,15 @@ function completeTimer() {
     }});
   }
 
-  // Update iteration count
-  if (state.mode === 'work') {
+  // Switch modes
+  const newMode = state.mode === 'work' ? 'break' : 'work';
+  
+  // Only increment iteration count after break session completes
+  if (state.mode === 'break') {
     state.currentIteration++;
   }
-
-  // Switch modes
-  state.mode = state.mode === 'work' ? 'break' : 'work';
+  
+  state.mode = newMode;
   state.timeRemaining = state.mode === 'work' ? state.settings.workDuration : state.settings.breakDuration;
 
   // Check if all iterations are complete
@@ -264,8 +266,12 @@ function completeTimer() {
     return;
   }
 
-  // Start the next timer
-  startTimer();
+  // Send COMPLETE message without starting the next timer
+  self.postMessage({ type: 'COMPLETE', payload: { 
+    mode: state.mode,
+    currentIteration: state.currentIteration,
+    totalIterations: state.totalIterations
+  }});
 }
 
 // Update settings
