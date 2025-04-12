@@ -7,13 +7,14 @@ import { useNotification } from "@/hooks/useNotification";
 import { useToast } from "@/hooks/use-toast";
 import { SettingsType } from "@/lib/timerService";
 import { Button } from "@/components/ui/button";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { resumeAudioContext } from "@/lib/soundEffects";
 import { getSettings } from "@/lib/localStorage";
 import { Settings } from "lucide-react";
 import "@/assets/headerBlur.css";
 
 export default function Home() {
+  const navigate = useNavigate();
   // Get settings from local storage
   const settings: SettingsType = getSettings();
   const [audioInitialized, setAudioInitialized] = useState(false);
@@ -110,21 +111,28 @@ export default function Home() {
     pauseTimer();
   }, [pauseTimer]);
 
+  // Handle settings navigation
+  const handleSettingsClick = useCallback(() => {
+    if (isRunning) {
+      pauseTimer();
+    }
+    navigate('/settings');
+  }, [isRunning, pauseTimer, navigate]);
+
   return (
     <div className="text-foreground font-sans min-h-screen">
       <div className="max-w-2xl mx-auto">
         <header className="relative p-4 flex items-center justify-between overflow-hidden">
           <div className="relative z-10 flex items-center justify-between w-full">
             <h1 className="text-2xl font-bold text-primary">Practice Timer</h1>
-            <Link to="/settings">
-              <Button
-                variant="ghost"
-                size="icon"
-                className="text-primary hover:text-primary/80"
-              >
-                <span className="material-icons">settings</span>
-              </Button>
-            </Link>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="text-primary hover:text-primary/80"
+              onClick={handleSettingsClick}
+            >
+              <span className="material-icons">settings</span>
+            </Button>
           </div>
         </header>
 
