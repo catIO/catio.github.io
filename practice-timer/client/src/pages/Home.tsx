@@ -119,6 +119,24 @@ export default function Home() {
     navigate('/settings');
   }, [isRunning, pauseTimer, navigate]);
 
+  // Handle keyboard events
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      // Only handle spacebar if it's not being used in an input field
+      if (event.key === ' ' && !['INPUT', 'TEXTAREA'].includes((event.target as HTMLElement).tagName)) {
+        event.preventDefault(); // Prevent page scroll
+        if (isRunning) {
+          handlePause();
+        } else {
+          handleStart();
+        }
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isRunning, handleStart, handlePause]);
+
   return (
     <div className="text-foreground font-sans min-h-screen">
       <div className="max-w-2xl mx-auto">
