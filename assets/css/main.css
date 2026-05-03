@@ -1,7 +1,26 @@
 body {margin-top:10px; background-color: black;}
-body { font-family: 'Roboto', sans-serif;  color: #ccc;}
-.tag  {background: #767676; line-height: 2; }
-.label {font-size: 110%; font-weight: 400;}
+body { font-family: 'Inter', sans-serif;  color: #ccc;}
+.tag {
+    background: #2a2a2a;
+    line-height: 2.2;
+    display: inline-block;
+    margin-bottom: 8px;
+    padding: 2px 14px;
+    border-radius: 20px;
+    border: 1px solid #444;
+    transition: all 0.2s ease;
+}
+
+.label {
+    font-size: 100%;
+    font-weight: 400;
+}
+
+.tag:hover {
+    background: #444;
+    border-color: #666;
+    transform: translateY(-1px);
+}
 .thumbnail a {background-color: #fff; }
 .intro {font-size: larger;}
  figure img {  margin-bottom: 50px; }
@@ -43,11 +62,14 @@ ul.social-network li {
 	margin: 0 5px;
 }
 
-.label a {color:#fff;}	
+.label a {
+    color: #eee;
+    text-decoration: none;
+}
 
 .label:hover a {
-	color:yellow;
-	text-decoration: none;
+    color: #fff;
+    text-decoration: none;
 }
 
 /* footer social icons */
@@ -70,7 +92,10 @@ ul.social-network li {
 .social-network a.icoMeetup:hover {
 	background-color:#007bb7;
 }
-.social-network a.icoFlickr:hover i, .social-network a.icoFacebook:hover i, .social-network a.icoTwitter:hover i, .social-network a.icoInstagram:hover i, .social-network a.icoLinkedin:hover i, .social-network a.icoMeetup:hover i {
+.social-network a.icoYoutube:hover {
+	background-color:#bb0000;
+}
+.social-network a.icoFlickr:hover i, .social-network a.icoFacebook:hover i, .social-network a.icoTwitter:hover i, .social-network a.icoInstagram:hover i, .social-network a.icoLinkedin:hover i, .social-network a.icoMeetup:hover i, .social-network a.icoYoutube:hover i {
 	color:#fff;
 }
 
