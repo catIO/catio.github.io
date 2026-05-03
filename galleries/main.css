@@ -24,7 +24,7 @@ a:hover {
 }
 
 .img-circle{
-    clip-path: circle(50px at center);
+    clip-path: circle(50% at center);
 }
 
 .gallery-container {
