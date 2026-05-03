@@ -1,25 +1,42 @@
 body {margin-top:10px; background-color: black;}
-body { font-family: 'Inter', sans-serif;  color: #ccc;}
+body { font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 400; color: #ccc;}
 .tag {
     background: #2a2a2a;
-    line-height: 2.2;
     display: inline-block;
     margin-bottom: 8px;
-    padding: 2px 14px;
     border-radius: 20px;
     border: 1px solid #444;
     transition: all 0.2s ease;
-}
-
-.label {
+    padding: 6px 16px;
+    overflow: hidden;
+    vertical-align: middle;
+    color: #eee;
     font-size: 100%;
     font-weight: 400;
+}
+
+.tag:has(a) {
+    padding: 0;
+}
+
+.tag a {
+    display: block;
+    padding: 6px 16px;
+    color: #eee;
+    text-decoration: none;
 }
 
 .tag:hover {
     background: #444;
     border-color: #666;
     transform: translateY(-1px);
+}
+
+.tag:not(:has(a)):hover {
+    transform: none;
+    background: #2a2a2a;
+    border-color: #444;
+    cursor: default;
 }
 .thumbnail a {background-color: #fff; }
 .intro {font-size: larger;}
@@ -65,6 +82,7 @@ ul.social-network li {
 .label a {
     color: #eee;
     text-decoration: none;
+    display: block;
 }
 
 .label:hover a {
@@ -78,22 +96,16 @@ ul.social-network li {
 	background-color:#3B5998;
 }
 .social-network a.icoTwitter:hover {
-	background-color:#55ACEE;
-}
-.social-network a.icoFlickr:hover {
-	background-color:#ff0084;
+	background-color:#1DA1F2;
 }
 .social-network a.icoInstagram:hover {
-	background-color:#3F729B;
+	background: radial-gradient(circle at 30% 107%, #fdf497 0%, #fdf497 5%, #fd5949 45%,#d6249f 60%,#285AEB 90%);
 }
 .social-network a.icoLinkedin:hover {
-	background-color:#007bb7;
-}
-.social-network a.icoMeetup:hover {
-	background-color:#007bb7;
+	background-color:#0077B5;
 }
 .social-network a.icoYoutube:hover {
-	background-color:#bb0000;
+	background-color:#FF0000;
 }
 .social-network a.icoFlickr:hover i, .social-network a.icoFacebook:hover i, .social-network a.icoTwitter:hover i, .social-network a.icoInstagram:hover i, .social-network a.icoLinkedin:hover i, .social-network a.icoMeetup:hover i, .social-network a.icoYoutube:hover i {
 	color:#fff;
